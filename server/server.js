@@ -17,7 +17,24 @@ dotenv.config();
 connectDB();
 
 const app = express();
-app.use(cors());
+
+// CORS — allow Vercel frontend + local dev
+const allowedOrigins = [
+  'http://localhost:3020',
+  'http://localhost:5173',
+  process.env.FRONTEND_URL,
+].filter(Boolean);
+
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow requests with no origin (mobile apps, curl, Render health checks)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    callback(new Error(`CORS blocked: ${origin}`));
+  },
+  credentials: true,
+}));
+
 app.use(express.json({ limit: '10mb' }));
 
 app.get('/api/health', (req, res) => res.json({ status: 'ok', app: 'DistriFlow API' }));

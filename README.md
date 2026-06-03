@@ -1,100 +1,121 @@
-# DistriFlow — Sales & Distribution Management System
+# Distributor CRM — DistriFlow
 
-A complete Sales & Distribution (S&D) platform for digitizing SME ecosystems — inspired by SalesOn functionality with a unique modern UI.
+A full-stack Sales & Distribution Management System built with React + Node.js + MongoDB.
 
-## Features
+## 🚀 Live Deployment
 
-- **Dashboard** — Real-time KPIs, sales charts, leaderboard, attendance summary
-- **Sales Orders** — Route-wise orders with digital catalog, discounts & stock validation
-- **Invoices & GST** — Automatic invoicing (Sales, Purchase, Estimate, DC) with A4/A5/Thermal
-- **Payment Collection** — On-the-go collection with approval workflow & outstanding reports
-- **Van Sales** — Van inventory load in/out, EOD summary, thermal printing ready
-- **Live Tracking** — Real-time sales rep location on Google Maps with navigation
-- **Attendance** — Geo-tagged check-in/out with overtime/undertime tracking
-- **Route Planner** — Route management with route-based access control
-- **Inventory** — Real-time stock with custom fields (Size, Color, Batch No)
-- **Target Meter** — KPI breakdown, leaderboards & gamification
-- **Production** — Multilevel BOM, work orders, quality check & cost tracking
-- **Purchases** — Purchase order management
-- **Business Reports** — Revenue trends, top products, outlet-wise outstanding
-- **Settings** — Highly configurable permissions, defaults & Tally integration
-- **Support** — Customer support ticket system
+| Service | Platform | URL |
+|---------|----------|-----|
+| Frontend | Vercel | *(set after deploy)* |
+| Backend  | Render  | *(set after deploy)* |
+| Database | MongoDB Atlas | Cloud |
 
-## Tech Stack
+---
 
-- **Frontend:** React 18 + Vite + Tailwind CSS + Recharts + Lucide Icons
-- **Backend:** Node.js + Express + MongoDB + JWT Auth
-- **Design:** Unique indigo/emerald glass-morphism UI (Outfit + JetBrains Mono fonts)
-
-## Quick Start
+## 📦 Local Development
 
 ### Prerequisites
-- Node.js 18+
+- Node.js v18+
 - MongoDB (local or Atlas)
 
 ### Setup
-
 ```bash
+# Clone the repo
+git clone https://github.com/bhuvi778/Distributer-CRM.git
+cd Distributer-CRM
+
 # Install all dependencies
 npm run install-all
 
-# Seed demo data
-npm run seed
+# Create server/.env (copy from example)
+cp server/.env.example server/.env
+# Edit server/.env with your MongoDB URI and JWT secret
 
-# Start development (server + client)
+# Run both frontend + backend
 npm run dev
 ```
 
-- **Frontend:** http://localhost:3020
-- **Backend API:** http://localhost:5010
-
-### Demo Login
+### Default Login (after seeding)
+```bash
+npm run seed
+```
 
 | Role | Email | Password |
 |------|-------|----------|
+| Super Admin | superadmin@distriFlow.com | super123 |
 | Admin | admin@distriFlow.com | admin123 |
-| Manager | manager@distriFlow.com | manager123 |
-| Sales Rep | amit@distriFlow.com | sales123 |
-| Sales Rep | priya@distriFlow.com | sales123 |
+| Sales Exec | amit@distriFlow.com | exec123 |
+| Retailer | retailer1@distriflow.com | retailer123 |
 
-## Project Structure
+---
 
+## ☁️ Deployment Guide
+
+### Step 1 — MongoDB Atlas (Free Database)
+
+1. Go to [mongodb.com/atlas](https://www.mongodb.com/atlas)
+2. Create free account → Create free cluster (M0)
+3. Database Access → Add user with password
+4. Network Access → Allow all IPs: `0.0.0.0/0`
+5. Connect → Drivers → Copy connection string
+   ```
+   mongodb+srv://<user>:<password>@cluster0.xxxxx.mongodb.net/distri_flow
+   ```
+
+---
+
+### Step 2 — Backend on Render
+
+1. Go to [render.com](https://render.com) → New → **Web Service**
+2. Connect GitHub → Select `Distributer-CRM` repo
+3. Settings:
+   - **Name:** `distriflow-api`
+   - **Root Directory:** `server`
+   - **Runtime:** Node
+   - **Build Command:** `npm install`
+   - **Start Command:** `npm start`
+4. Environment Variables → Add these:
+   ```
+   MONGO_URI = mongodb+srv://...  (from Atlas)
+   JWT_SECRET = any_long_random_string_min_32_chars
+   JWT_EXPIRE = 7d
+   NODE_ENV = production
+   FRONTEND_URL = https://your-app.vercel.app
+   ```
+5. Click **Deploy** → Wait ~2 mins
+6. Copy your Render URL: `https://distriflow-api.onrender.com`
+
+---
+
+### Step 3 — Frontend on Vercel
+
+1. Go to [vercel.com](https://vercel.com) → New Project
+2. Import `Distributer-CRM` from GitHub
+3. Settings:
+   - **Framework:** Vite
+   - **Root Directory:** `client`
+   - **Build Command:** `npm run build`
+   - **Output Directory:** `dist`
+4. Environment Variables → Add:
+   ```
+   VITE_API_URL = https://distriflow-api.onrender.com
+   ```
+   *(Use your actual Render URL from Step 2)*
+5. Click **Deploy** → Done!
+
+### Step 4 — Update CORS on Render
+
+After Vercel deploy, go back to Render → Environment Variables → Update:
 ```
-Reatiler CRM/
-├── client/          # React frontend (Vite)
-│   └── src/
-│       ├── pages/       # All module pages
-│       ├── components/  # Layout, common UI
-│       ├── context/     # Auth context
-│       └── api/         # Axios instance
-├── server/          # Express backend
-│   ├── models/      # Mongoose schemas
-│   ├── controllers/ # Route handlers
-│   ├── routes/      # API routes
-│   └── seed.js      # Demo data seeder
-└── package.json     # Root scripts
+FRONTEND_URL = https://your-actual-vercel-url.vercel.app
 ```
+Then Redeploy.
 
-## API Endpoints
+---
 
-| Module | Endpoint |
-|--------|----------|
-| Auth | `/api/auth/login`, `/api/auth/register` |
-| Dashboard | `/api/dashboard/stats`, `/api/dashboard/leaderboard` |
-| Outlets | `/api/outlets` |
-| Products | `/api/products` |
-| Routes | `/api/routes` |
-| Orders | `/api/orders` |
-| Invoices | `/api/invoices` |
-| Payments | `/api/payments` |
-| Inventory | `/api/inventory` |
-| Attendance | `/api/attendance/check-in`, `/api/attendance/check-out` |
-| Tracking | `/api/tracking/live` |
-| Van Sales | `/api/van-sales` |
-| Targets | `/api/targets` |
-| Production | `/api/production` |
-| Settings | `/api/settings`, `/api/settings/tally-sync` |
+## 🏗️ Tech Stack
 
-## License
-
-MIT
+- **Frontend:** React 18, Vite, Tailwind CSS, React Router v6
+- **Backend:** Node.js, Express.js, MongoDB, Mongoose
+- **Auth:** JWT tokens
+- **Deployment:** Vercel (frontend) + Render (backend) + MongoDB Atlas
