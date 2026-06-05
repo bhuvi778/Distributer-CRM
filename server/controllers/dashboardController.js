@@ -96,6 +96,9 @@ export const getDashboardStats = async (req, res) => {
     if (role === 'reception') {
       extra.openTickets = await SupportTicket.countDocuments({ status: { $in: ['open', 'in_progress'] } });
     }
+    if (['super_admin', 'admin', 'manager'].includes(role)) {
+      extra.lowStockItems = await Inventory.countDocuments({ quantity: { $lte: 10 } });
+    }
 
     const [
       totalOrders,
