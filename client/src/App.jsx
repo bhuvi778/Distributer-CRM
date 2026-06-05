@@ -37,6 +37,7 @@ import Visited from './pages/parties/Visited';
 
 // ── Sales ────────────────────────────────────────────────────────
 import Estimates from './pages/sales/Estimates';
+import SalesInvoices from './pages/sales/SalesInvoices';
 import DeliveryChallans from './pages/sales/DeliveryChallans';
 import SalesReturns from './pages/sales/SalesReturns';
 
@@ -114,7 +115,7 @@ function AppRoutes() {
           <Route index element={<Navigate to="estimates" replace />} />
           <Route path="estimates"         element={<RoleRoute path="/app/sales/estimates"><P><Estimates /></P></RoleRoute>} />
           <Route path="orders"            element={<RoleRoute path="/app/sales/orders"><P><Orders /></P></RoleRoute>} />
-          <Route path="invoices"          element={<RoleRoute path="/app/sales/invoices"><P><Invoices /></P></RoleRoute>} />
+          <Route path="invoices"          element={<RoleRoute path="/app/sales/invoices"><SalesInvoices /></RoleRoute>} />
           <Route path="delivery-challans" element={<RoleRoute path="/app/sales/delivery-challans"><P><DeliveryChallans /></P></RoleRoute>} />
           <Route path="returns"           element={<RoleRoute path="/app/sales/returns"><P><SalesReturns /></P></RoleRoute>} />
         </Route>
