@@ -42,6 +42,32 @@ router.delete('/items/:id', protect, async (req, res) => {
   } catch (e) { res.status(500).json({ message: e.message }); }
 });
 
+// Stock adjustment
+router.post('/items/:id/adjust-stock', protect, async (req, res) => {
+  try {
+    const { warehouse, adjustmentType, adjustQty, comments } = req.body;
+    const product = await Product.findById(req.params.id);
+    if (!product) return res.status(404).json({ message: 'Item not found' });
+
+    let newStock = product.stock;
+    if (adjustmentType === 'add')      newStock = product.stock + Number(adjustQty);
+    if (adjustmentType === 'subtract') newStock = Math.max(0, product.stock - Number(adjustQty));
+    if (adjustmentType === 'set')      newStock = Number(adjustQty);
+
+    product.stock = newStock;
+    await product.save();
+
+    // Also update inventory record
+    await Inventory.findOneAndUpdate(
+      { product: product._id, warehouse: warehouse || 'Main' },
+      { quantity: newStock, availableQty: newStock },
+      { upsert: true }
+    );
+
+    res.json({ stock: newStock, message: 'Stock adjusted successfully' });
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
 // ─── WAREHOUSES ─────────────────────────────────────────────────
 router.get('/warehouses', protect, async (req, res) => {
   try {
