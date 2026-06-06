@@ -18,12 +18,13 @@ const citySchema = new mongoose.Schema({
 }, { timestamps: true });
 
 const areaSchema = new mongoose.Schema({
-  name: { type: String, required: true },
-  city: { type: mongoose.Schema.Types.ObjectId, ref: 'City', required: true },
-  region: { type: mongoose.Schema.Types.ObjectId, ref: 'Region' },
-  pincode: String,
+  name:        { type: String, required: true },
+  city:        { type: mongoose.Schema.Types.ObjectId, ref: 'City', required: true },
+  region:      { type: mongoose.Schema.Types.ObjectId, ref: 'Region' },
+  warehouse:   { type: String },                           // warehouse name
+  pincode:     String,
   assignedRep: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-  isActive: { type: Boolean, default: true },
+  isActive:    { type: Boolean, default: true },
 }, { timestamps: true });
 
 export const Region = mongoose.model('Region', regionSchema);
