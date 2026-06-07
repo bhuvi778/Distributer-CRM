@@ -21,6 +21,7 @@ import Support from './pages/Support';
 import Employees from './pages/Employees';
 import Admins from './pages/Admins';
 import Leads from './pages/Leads';
+import Expenses from './pages/Expenses';
 
 // ── Inventory ────────────────────────────────────────────────────
 import Items from './pages/inventory/Items';
@@ -151,6 +152,7 @@ function AppRoutes() {
         {/* Settings & Support */}
         <Route path="settings" element={<RoleRoute path="/app/settings"><SettingsPage /></RoleRoute>} />
         <Route path="support"  element={<RoleRoute path="/app/support"><Support /></RoleRoute>} />
+        <Route path="expenses" element={<RoleRoute path="/app/expenses"><Expenses /></RoleRoute>} />
       </Route>
     </Routes>
   );

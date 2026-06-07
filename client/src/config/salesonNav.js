@@ -2,6 +2,7 @@ import {
   LayoutDashboard, MapPin, Package, Users, Truck, ShoppingCart,
   ClipboardList, Globe, Clock, UserCog, Target, CreditCard, TrendingUp,
   FileText, RotateCcw, Warehouse, Tag, ArrowLeftRight, Building2,
+  Trophy, Wallet,
 } from 'lucide-react';
 
 /**
@@ -34,8 +35,7 @@ export const SALESON_NAV_DEF = [
       { path: '/app/inventory/price-list', moduleId: 'inventory-pricelist',  label: 'Price List' },
       { path: '/app/inventory/transfers',  moduleId: 'inventory-transfers',  label: 'Transfer Orders' },
     ],
-  },
-  {
+  },  {
     type: 'link',
     path: '/app/leads',
     moduleId: 'leads',
@@ -58,7 +58,7 @@ export const SALESON_NAV_DEF = [
   {
     type: 'group',
     id: 'sales',
-    label: 'Sales',
+    label: 'Transactions',
     icon: ShoppingCart,
     items: [
       { path: '/app/sales/estimates',         moduleId: 'sales-estimates', label: 'Estimates' },
@@ -132,8 +132,15 @@ export const SALESON_NAV_DEF = [
     type: 'link',
     path: '/app/targets',
     moduleId: 'targets',
-    icon: Target,
-    label: 'Targets',
+    icon: Trophy,
+    label: 'Achievements',
+  },
+  {
+    type: 'link',
+    path: '/app/expenses',
+    moduleId: 'expenses',
+    icon: Wallet,
+    label: 'Expenses',
   },
 ];
 

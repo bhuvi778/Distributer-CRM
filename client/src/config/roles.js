@@ -51,6 +51,9 @@ export const PERMISSION_MODULES = [
   // Targets
   { id: 'targets',     path: '/app/targets',     label: 'Targets',          section: 'Targets' },
 
+  // Expenses
+  { id: 'expenses',    path: '/app/expenses',    label: 'Expenses',         section: 'Other' },
+
   // Settings & Support
   { id: 'support',     path: '/app/support',     label: 'Support',          section: 'Other' },
   { id: 'settings',    path: '/app/settings',    label: 'Settings',         section: 'Other' },
@@ -113,16 +116,24 @@ export const ROLE_DEFAULT_MODULES = {
     'targets','support','settings','employees',
   ],
   sales_executive: [
-    'dashboard','attendance','tracking','leads',
-    'parties-customers','parties-visited',
-    'sales-estimates','sales-orders','sales-delivery',
-    'payments','targets','support','settings',
+    'dashboard',
+    'parties-customers','parties-distributors','parties-superstockers','parties-suppliers','parties-visited',
+    'inventory-items',
+    'sales-estimates','sales-orders','sales-invoices','sales-delivery','sales-returns',
+    'attendance',
+    'targets',
+    'expenses',
+    'payments','support','settings',
   ],
   sales_rep: [
-    'dashboard','attendance','tracking',
+    'dashboard',
     'parties-customers','parties-visited',
+    'inventory-items',
     'sales-orders','sales-delivery',
-    'payments','targets','support','settings',
+    'attendance',
+    'targets',
+    'expenses',
+    'payments','support','settings',
   ],
   manager: [
     'dashboard','tracking','attendance','leads',
