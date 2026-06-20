@@ -3,6 +3,7 @@ import { Search, Edit2, Trash2, Eye } from 'lucide-react';
 import api from '../api/axios';
 import { useAuth } from '../context/AuthContext';
 import useMasterData, { invalidateMasterData } from '../hooks/useMasterData';
+import useIndiaLocations from '../hooks/useIndiaLocations';
 import PageHeader from '../components/common/PageHeader';
 import Modal from '../components/common/Modal';
 import Badge from '../components/common/Badge';
@@ -43,6 +44,7 @@ export default function Invoices() {
   const [viewItem, setViewItem] = useState(null);
   const [editItem, setEditItem] = useState(null);
   const [form, setForm] = useState(emptyForm());
+  const { states } = useIndiaLocations();
 
   const salesReps = users.filter((u) => ['sales_rep', 'manager', 'admin'].includes(u.role));
 
@@ -89,7 +91,12 @@ export default function Invoices() {
 
   const handleOutletChange = (outletId) => {
     const outlet = outlets.find((o) => o._id === outletId);
-    setForm({ ...form, outlet: outletId, gstin: outlet?.gstin || form.gstin });
+    setForm({
+      ...form,
+      outlet: outletId,
+      gstin: outlet?.gstin || form.gstin,
+      placeOfSupply: outlet?.address?.state || form.placeOfSupply,
+    });
   };
 
   const handleSubmit = async (e) => {
@@ -245,7 +252,10 @@ export default function Invoices() {
             </div>
             <div>
               <label className="block text-sm font-medium mb-1.5">Place of Supply</label>
-              <input value={form.placeOfSupply} onChange={(e) => setForm({ ...form, placeOfSupply: e.target.value })} className="input-field" placeholder="State name" />
+              <select value={form.placeOfSupply} onChange={(e) => setForm({ ...form, placeOfSupply: e.target.value })} className="input-field">
+                <option value="">Select state...</option>
+                {states.map((s) => <option key={s} value={s}>{s}</option>)}
+              </select>
             </div>
             <div>
               <label className="block text-sm font-medium mb-1.5">Print Format</label>
