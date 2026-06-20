@@ -72,7 +72,7 @@ router.get('/areas', protect, async (req, res) => {
     const filter = { isActive: true };
     if (city) filter.city = city;
     if (region) filter.region = region;
-    const areas = await Area.find(filter).populate('city', 'name').populate('region', 'name').populate('assignedRep', 'name').sort('name');
+    const areas = await Area.find(filter).populate('city', 'name state pincode').populate('region', 'name').populate('assignedRep', 'name').sort('name');
     res.json(areas);
   } catch (e) { res.status(500).json({ message: e.message }); }
 });

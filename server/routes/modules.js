@@ -64,7 +64,7 @@ tracking.get('/', protect, ctrl.locationCtrl.getAll);
 router.use('/tracking', tracking);
 
 const vanSales = Router();
-crudRoutes(vanSales, ctrl.vanSalesCtrl);
+crudRoutes(vanSales, ctrl.vanSalesCtrl, { create: ctrl.createVanSale, update: ctrl.updateVanSale });
 router.use('/van-sales', vanSales);
 
 const targets = Router();

@@ -9,13 +9,43 @@ function Modal({ editing, regions, onClose, onSave }) {
       : { name: '', region: '', state: '', pincode: '' }
   );
   const [saving, setSaving] = useState(false);
+  const [pinQuery, setPinQuery] = useState(editing?.pincode || editing?.name || '');
+  const [pinSuggestions, setPinSuggestions] = useState([]);
   const f = (k, v) => setForm(p => ({ ...p, [k]: v }));
+
+  useEffect(() => {
+    const q = pinQuery.trim();
+    if (q.length < 2) {
+      setPinSuggestions([]);
+      return undefined;
+    }
+    const timer = setTimeout(async () => {
+      try {
+        const { data } = await api.get('/pincodes/search', { params: { q } });
+        setPinSuggestions(data);
+      } catch {
+        setPinSuggestions([]);
+      }
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [pinQuery]);
 
   // Auto-fill state from selected region
   const handleRegionChange = (id) => {
     const r = regions.find(x => x._id === id);
     f('region', id);
     if (r?.states?.[0] && !form.state) f('state', r.states[0]);
+  };
+
+  const selectPincode = (pin) => {
+    setForm(p => ({
+      ...p,
+      name: p.name || pin.district || pin.name,
+      state: pin.state || p.state,
+      pincode: pin.pincode,
+    }));
+    setPinQuery(`${pin.pincode} - ${pin.name}`);
+    setPinSuggestions([]);
   };
 
   const save = async () => {
@@ -55,7 +85,16 @@ function Modal({ editing, regions, onClose, onSave }) {
           </div>
           <div>
             <label className="so-label">Pincode</label>
-            <input className="so-input w-full" value={form.pincode} onChange={e => f('pincode', e.target.value)} placeholder="226001" />
+            <input className="so-input w-full" value={form.pincode} onChange={e => { f('pincode', e.target.value); setPinQuery(e.target.value); }} placeholder="Type pincode or post office" />
+            {pinSuggestions.length > 0 && (
+              <div className="mt-2 border border-[#e0e0e0] rounded bg-white max-h-40 overflow-auto">
+                {pinSuggestions.map((pin) => (
+                  <button key={`${pin.name}-${pin.pincode}`} type="button" onClick={() => selectPincode(pin)} className="block w-full text-left px-3 py-2 text-xs hover:bg-[#f5f5f5]">
+                    <span className="font-mono">{pin.pincode}</span> - {pin.name}, {pin.district}, {pin.state}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
         <div className="flex items-center justify-end gap-3 px-5 py-4 border-t border-[#e0e0e0]">

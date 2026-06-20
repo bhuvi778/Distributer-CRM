@@ -129,7 +129,11 @@ function AppRoutes() {
         <Route path="van-sales" element={<RoleRoute path="/app/van-sales"><VanSales /></RoleRoute>} />
 
         {/* Finance */}
-        <Route path="payments" element={<RoleRoute path="/app/payments"><Payments /></RoleRoute>} />
+        <Route path="payments">
+          <Route index element={<Navigate to="in" replace />} />
+          <Route path="in"  element={<RoleRoute path="/app/payments"><Payments /></RoleRoute>} />
+          <Route path="out" element={<RoleRoute path="/app/payments"><Payments /></RoleRoute>} />
+        </Route>
         <Route path="invoices"  element={<RoleRoute path="/app/invoices"><Invoices /></RoleRoute>} />
         <Route path="reports"   element={<RoleRoute path="/app/reports"><Reports /></RoleRoute>} />
 
