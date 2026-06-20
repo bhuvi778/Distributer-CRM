@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Search, Edit2, Trash2, Eye } from 'lucide-react';
 import api from '../api/axios';
 import useMasterData from '../hooks/useMasterData';
+import useIndiaLocations from '../hooks/useIndiaLocations';
 import SalesOnListPage, { SalesOnSearchInput } from '../components/common/SalesOnListPage';
 import Modal from '../components/common/Modal';
 import Badge from '../components/common/Badge';
@@ -37,6 +38,7 @@ export default function Outlets() {
   const [viewItem, setViewItem] = useState(null);
   const [editItem, setEditItem] = useState(null);
   const [form, setForm] = useState(emptyForm());
+  const { states, cities, loadingCities } = useIndiaLocations(form.address?.state);
 
   const salesReps = users.filter((u) => ['sales_rep', 'manager'].includes(u.role));
 
@@ -80,6 +82,7 @@ export default function Outlets() {
   };
 
   const setAddr = (field, val) => setForm({ ...form, address: { ...form.address, [field]: val } });
+  const setState = (state) => setForm({ ...form, address: { ...form.address, state, city: '' } });
 
   return (
     <>
@@ -174,9 +177,15 @@ export default function Outlets() {
             <div className="col-span-2"><label className="block text-sm font-medium mb-1.5">Street Address</label>
               <input value={form.address.street} onChange={(e) => setAddr('street', e.target.value)} className="input-field" /></div>
             <div><label className="block text-sm font-medium mb-1.5">City</label>
-              <input value={form.address.city} onChange={(e) => setAddr('city', e.target.value)} className="input-field" /></div>
+              <select value={form.address.city} onChange={(e) => setAddr('city', e.target.value)} className="input-field" disabled={!form.address.state || loadingCities}>
+                <option value="">{loadingCities ? 'Loading cities...' : 'Select city...'}</option>
+                {cities.map((c) => <option key={c} value={c}>{c}</option>)}
+              </select></div>
             <div><label className="block text-sm font-medium mb-1.5">State</label>
-              <input value={form.address.state} onChange={(e) => setAddr('state', e.target.value)} className="input-field" /></div>
+              <select value={form.address.state} onChange={(e) => setState(e.target.value)} className="input-field">
+                <option value="">Select state...</option>
+                {states.map((s) => <option key={s} value={s}>{s}</option>)}
+              </select></div>
             <div><label className="block text-sm font-medium mb-1.5">Pincode</label>
               <input value={form.address.pincode} onChange={(e) => setAddr('pincode', e.target.value)} className="input-field" /></div>
           </div>

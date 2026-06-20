@@ -4,6 +4,7 @@ import { Plus, Search, Edit2, Phone, MapPin, Users, Truck, Star, ShoppingBag, Ey
 import api from '../api/axios';
 import SlidePanel from '../components/common/SlidePanel';
 import { formatCurrency } from '../utils/helpers';
+import useIndiaLocations from '../hooks/useIndiaLocations';
 
 const TYPE_TABS = [
   { id: 'customer', label: 'Customers', icon: Users },
@@ -16,8 +17,10 @@ const TYPE_TABS = [
 const TYPE_LABELS = { customer: 'Customer', distributor: 'Distributor', super_stocker: 'Super Stocker', supplier: 'Supplier', visited: 'Visited' };
 
 function PartyForm({ form, setForm, onSave, onClose }) {
+  const { states, cities, loadingCities } = useIndiaLocations(form.address?.state);
   const f = (k, v) => setForm(p => ({ ...p, [k]: v }));
   const fa = (k, v) => setForm(p => ({ ...p, address: { ...p.address, [k]: v } }));
+  const setAddressState = (state) => setForm(p => ({ ...p, address: { ...p.address, state, city: '' } }));
 
   return (
     <div className="space-y-4">
@@ -45,8 +48,18 @@ function PartyForm({ form, setForm, onSave, onClose }) {
           </select>
         </div>
         <div className="col-span-2"><label className="so-label">Street Address</label><input className="so-input w-full" value={form.address?.street} onChange={e => fa('street', e.target.value)} /></div>
-        <div><label className="so-label">City</label><input className="so-input w-full" value={form.address?.city} onChange={e => fa('city', e.target.value)} /></div>
-        <div><label className="so-label">State</label><input className="so-input w-full" value={form.address?.state} onChange={e => fa('state', e.target.value)} /></div>
+        <div><label className="so-label">State</label>
+          <select className="so-input w-full" value={form.address?.state || ''} onChange={e => setAddressState(e.target.value)}>
+            <option value="">Select State</option>
+            {states.map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
+        </div>
+        <div><label className="so-label">City</label>
+          <select className="so-input w-full" value={form.address?.city || ''} onChange={e => fa('city', e.target.value)} disabled={!form.address?.state || loadingCities}>
+            <option value="">{loadingCities ? 'Loading cities...' : 'Select City'}</option>
+            {cities.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+        </div>
         <div><label className="so-label">Pincode</label><input className="so-input w-full" value={form.address?.pincode} onChange={e => fa('pincode', e.target.value)} /></div>
         <div className="col-span-2"><label className="so-label">Notes</label><textarea className="so-input w-full" rows={2} value={form.notes} onChange={e => f('notes', e.target.value)} /></div>
       </div>

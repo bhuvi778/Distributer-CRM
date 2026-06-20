@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Plus, Edit2, Trash2, Search, Download, Upload, X } from 'lucide-react';
 import api from '../../api/axios';
+import useIndiaLocations from '../../hooks/useIndiaLocations';
 
 function Modal({ editing, regions, onClose, onSave }) {
   const [form, setForm] = useState(
@@ -11,6 +12,7 @@ function Modal({ editing, regions, onClose, onSave }) {
   const [saving, setSaving] = useState(false);
   const [pinQuery, setPinQuery] = useState(editing?.pincode || editing?.name || '');
   const [pinSuggestions, setPinSuggestions] = useState([]);
+  const { states, cities, loadingCities } = useIndiaLocations(form.state);
   const f = (k, v) => setForm(p => ({ ...p, [k]: v }));
 
   useEffect(() => {
@@ -77,11 +79,17 @@ function Modal({ editing, regions, onClose, onSave }) {
           </div>
           <div>
             <label className="so-label">City Name *</label>
-            <input className="so-input w-full" value={form.name} onChange={e => f('name', e.target.value)} placeholder="e.g. Lucknow" autoFocus />
+            <select className="so-input w-full" value={form.name} onChange={e => f('name', e.target.value)} disabled={!form.state || loadingCities} autoFocus>
+              <option value="">{loadingCities ? 'Loading cities...' : 'Select City'}</option>
+              {cities.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
           </div>
           <div>
             <label className="so-label">State</label>
-            <input className="so-input w-full" value={form.state} onChange={e => f('state', e.target.value)} placeholder="e.g. Uttar Pradesh" />
+            <select className="so-input w-full" value={form.state} onChange={e => setForm(p => ({ ...p, state: e.target.value, name: '' }))}>
+              <option value="">Select State</option>
+              {states.map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
           </div>
           <div>
             <label className="so-label">Pincode</label>

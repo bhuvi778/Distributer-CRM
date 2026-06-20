@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Plus, Search, Edit2, Phone, TrendingUp, Calendar } from 'lucide-react';
 import api from '../api/axios';
 import SlidePanel from '../components/common/SlidePanel';
+import useIndiaLocations from '../hooks/useIndiaLocations';
 
 const STATUSES = ['new', 'contacted', 'qualified', 'proposal', 'negotiation', 'won', 'lost'];
 const STATUS_COLORS = { new: 'so-badge-info', contacted: 'so-badge-warning', qualified: 'so-badge-success', proposal: 'so-badge-info', negotiation: 'so-badge-warning', won: 'so-badge-success', lost: 'so-badge-danger' };
@@ -15,6 +16,7 @@ export default function Leads() {
   const [editing, setEditing] = useState(null);
   const emptyForm = { name: '', contactPerson: '', phone: '', email: '', source: 'manual', status: 'new', type: 'customer', address: { city: '', state: '' }, expectedValue: '', followUpDate: '', notes: '' };
   const [form, setForm] = useState(emptyForm);
+  const { states, cities, loadingCities } = useIndiaLocations(form.address?.state);
 
   const load = useCallback(async () => {
     const { data } = await api.get('/leads', { params: { search: search || undefined, status: statusFilter || undefined } });
@@ -34,6 +36,7 @@ export default function Leads() {
 
   const f = (k, v) => setForm(p => ({ ...p, [k]: v }));
   const fa = (k, v) => setForm(p => ({ ...p, address: { ...p.address, [k]: v } }));
+  const setAddressState = (state) => setForm(p => ({ ...p, address: { ...p.address, state, city: '' } }));
 
   // Stats
   const stats = STATUSES.reduce((acc, s) => ({ ...acc, [s]: leads.filter(l => l.status === s).length }), {});
@@ -122,8 +125,18 @@ export default function Leads() {
             </div>
             <div><label className="so-label">Expected Value (₹)</label><input type="number" className="so-input w-full" value={form.expectedValue} onChange={e => f('expectedValue', e.target.value)} /></div>
             <div><label className="so-label">Follow Up Date</label><input type="date" className="so-input w-full" value={form.followUpDate} onChange={e => f('followUpDate', e.target.value)} /></div>
-            <div><label className="so-label">City</label><input className="so-input w-full" value={form.address?.city} onChange={e => fa('city', e.target.value)} /></div>
-            <div><label className="so-label">State</label><input className="so-input w-full" value={form.address?.state} onChange={e => fa('state', e.target.value)} /></div>
+            <div><label className="so-label">State</label>
+              <select className="so-input w-full" value={form.address?.state || ''} onChange={e => setAddressState(e.target.value)}>
+                <option value="">Select State</option>
+                {states.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </div>
+            <div><label className="so-label">City</label>
+              <select className="so-input w-full" value={form.address?.city || ''} onChange={e => fa('city', e.target.value)} disabled={!form.address?.state || loadingCities}>
+                <option value="">{loadingCities ? 'Loading cities...' : 'Select City'}</option>
+                {cities.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
             <div className="col-span-2"><label className="so-label">Notes</label><textarea className="so-input w-full" rows={2} value={form.notes} onChange={e => f('notes', e.target.value)} /></div>
           </div>
           <div className="flex gap-2 pt-2 border-t border-[#f0f0f0]">

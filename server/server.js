@@ -13,6 +13,7 @@ import salesRoutes from './routes/sales.js';
 import leadRoutes from './routes/leads.js';
 import routeManagementRoutes from './routes/routeManagement.js';
 import pincodeRoutes from './routes/pincodes.js';
+import locationRoutes from './routes/locations.js';
 
 dotenv.config();
 connectDB();
@@ -55,6 +56,7 @@ app.use('/api/sales', salesRoutes);
 app.use('/api/leads', leadRoutes);
 app.use('/api/route-management', routeManagementRoutes);
 app.use('/api/pincodes', pincodeRoutes);
+app.use('/api/locations', locationRoutes);
 app.use('/api', moduleRoutes);
 
 app.use((err, req, res, next) => {

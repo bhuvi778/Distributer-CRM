@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Plus, Edit2, Trash2, Search, Download, Upload, X } from 'lucide-react';
 import api from '../../api/axios';
+import useIndiaLocations from '../../hooks/useIndiaLocations';
 
 function Modal({ editing, onClose, onSave }) {
   const [form, setForm] = useState(
@@ -9,7 +10,14 @@ function Modal({ editing, onClose, onSave }) {
       : { name: '', code: '', states: '', notes: '' }
   );
   const [saving, setSaving] = useState(false);
+  const { states } = useIndiaLocations();
   const f = (k, v) => setForm(p => ({ ...p, [k]: v }));
+  const selectedStates = form.states ? form.states.split(',').map(s => s.trim()).filter(Boolean) : [];
+  const addState = (state) => {
+    if (!state || selectedStates.includes(state)) return;
+    f('states', [...selectedStates, state].join(', '));
+  };
+  const removeState = (state) => f('states', selectedStates.filter(s => s !== state).join(', '));
 
   const save = async () => {
     if (!form.name) return alert('Region name is required');
@@ -40,8 +48,20 @@ function Modal({ editing, onClose, onSave }) {
             <input className="so-input w-full" value={form.code} onChange={e => f('code', e.target.value)} placeholder="e.g. NI" />
           </div>
           <div>
-            <label className="so-label">States (comma-separated)</label>
-            <input className="so-input w-full" value={form.states} onChange={e => f('states', e.target.value)} placeholder="Delhi, Punjab, Haryana, UP" />
+            <label className="so-label">States Covered</label>
+            <select className="so-input w-full" value="" onChange={e => addState(e.target.value)}>
+              <option value="">Select State</option>
+              {states.filter(s => !selectedStates.includes(s)).map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
+            {selectedStates.length > 0 && (
+              <div className="flex flex-wrap gap-1 mt-2">
+                {selectedStates.map(s => (
+                  <button key={s} type="button" onClick={() => removeState(s)} className="so-badge so-badge-info">
+                    {s} x
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
           <div>
             <label className="so-label">Notes</label>

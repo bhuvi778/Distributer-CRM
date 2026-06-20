@@ -3,6 +3,7 @@ import { Plus, Edit2, Download, Upload } from 'lucide-react';
 import api from '../../api/axios';
 import SlidePanel from '../../components/common/SlidePanel';
 import { exportToExcel } from '../../utils/exportExcel';
+import useIndiaLocations from '../../hooks/useIndiaLocations';
 
 const WAREHOUSE_TYPES = [
   { value: 'primary', label: 'Primary' },
@@ -74,6 +75,7 @@ export default function Warehouses() {
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(emptyForm);
   const importRef = useRef(null);
+  const { states, cities, loadingCities } = useIndiaLocations(form.address?.state);
 
   const load = async () => {
     setLoading(true);
@@ -109,6 +111,7 @@ export default function Warehouses() {
 
   const f = (k, v) => setForm(p => ({ ...p, [k]: v }));
   const fa = (k, v) => setForm(p => ({ ...p, address: { ...p.address, [k]: v } }));
+  const setState = (state) => setForm(p => ({ ...p, address: { ...p.address, state, city: '' } }));
 
   const handleImport = async (event) => {
     const file = event.target.files?.[0];
@@ -211,8 +214,18 @@ export default function Warehouses() {
           </div>
           <div><label className="so-label">Address *</label><input className="so-input w-full" value={form.address?.street || ''} onChange={e => fa('street', e.target.value)} /></div>
           <div className="grid grid-cols-2 gap-3">
-            <div><label className="so-label">City</label><input className="so-input w-full" value={form.address?.city || ''} onChange={e => fa('city', e.target.value)} /></div>
-            <div><label className="so-label">State *</label><input className="so-input w-full" value={form.address?.state || ''} onChange={e => fa('state', e.target.value)} /></div>
+            <div><label className="so-label">State *</label>
+              <select className="so-input w-full" value={form.address?.state || ''} onChange={e => setState(e.target.value)}>
+                <option value="">Select State</option>
+                {states.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </div>
+            <div><label className="so-label">City</label>
+              <select className="so-input w-full" value={form.address?.city || ''} onChange={e => fa('city', e.target.value)} disabled={!form.address?.state || loadingCities}>
+                <option value="">{loadingCities ? 'Loading cities...' : 'Select City'}</option>
+                {cities.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
             <div><label className="so-label">Pincode</label><input className="so-input w-full" value={form.address?.pincode || ''} onChange={e => fa('pincode', e.target.value)} /></div>
             <div><label className="so-label">Phone</label><input className="so-input w-full" value={form.phone} onChange={e => f('phone', e.target.value)} /></div>
           </div>

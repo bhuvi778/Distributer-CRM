@@ -4,6 +4,7 @@ import api from '../../api/axios';
 import SlidePanel from '../../components/common/SlidePanel';
 import { formatCurrency } from '../../utils/helpers';
 import { exportToExcel } from '../../utils/exportExcel';
+import useIndiaLocations from '../../hooks/useIndiaLocations';
 
 const PAGE_SIZE = 30;
 
@@ -53,6 +54,7 @@ export default function PartyPage({ type, title, description }) {
     address: { street: '', city: '', state: '', pincode: '' }, notes: '',
   };
   const [form, setForm] = useState(emptyForm);
+  const { states, cities: locationCities, loadingCities } = useIndiaLocations(form.address?.state);
 
   // ── Load ──────────────────────────────────────────────────────
   const load = useCallback(async () => {
@@ -101,6 +103,7 @@ export default function PartyPage({ type, title, description }) {
 
   const f  = (k, v) => setForm(p => ({ ...p, [k]: v }));
   const fa = (k, v) => setForm(p => ({ ...p, address: { ...p.address, [k]: v } }));
+  const setAddressState = (state) => setForm(p => ({ ...p, address: { ...p.address, state, city: '' } }));
 
   // ── Export ────────────────────────────────────────────────────
   const handleExport = () => exportToExcel(parties, `${type}_parties`, EXPORT_COLS);
@@ -356,11 +359,17 @@ export default function PartyPage({ type, title, description }) {
               </div>
               <div>
                 <label className="so-label">City</label>
-                <input className="so-input w-full" value={form.address?.city || ''} onChange={e => fa('city', e.target.value)} />
+                <select className="so-input w-full" value={form.address?.city || ''} onChange={e => fa('city', e.target.value)} disabled={!form.address?.state || loadingCities}>
+                  <option value="">{loadingCities ? 'Loading cities...' : 'Select City'}</option>
+                  {locationCities.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
               </div>
               <div>
                 <label className="so-label">State</label>
-                <input className="so-input w-full" value={form.address?.state || ''} onChange={e => fa('state', e.target.value)} />
+                <select className="so-input w-full" value={form.address?.state || ''} onChange={e => setAddressState(e.target.value)}>
+                  <option value="">Select State</option>
+                  {states.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
               </div>
               <div>
                 <label className="so-label">Pincode</label>
