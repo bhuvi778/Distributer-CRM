@@ -430,7 +430,7 @@ export default function PartyPage({ type, title, description }) {
             </div>
           </Section>
 
-          {type === 'distributor' && (
+          {['distributor', 'super_stocker'].includes(type) && (
             <Section title="Access Details">
               <div className="grid grid-cols-2 gap-3">
                 <label className="flex items-center gap-2 text-xs text-[#555] col-span-2">
