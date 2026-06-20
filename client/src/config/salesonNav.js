@@ -75,7 +75,18 @@ export const SALESON_NAV_DEF = [
     icon: ClipboardList,
     items: [
       { path: '/app/purchases',  moduleId: 'purchases',  label: 'Purchase Orders' },
-      { path: '/app/production', moduleId: 'production', label: 'Production' },
+    ],
+  },
+  {
+    type: 'group',
+    id: 'production',
+    label: 'Production',
+    icon: ClipboardList,
+    items: [
+      { path: '/app/production/grm',               moduleId: 'production', label: 'GRM' },
+      { path: '/app/production/bom',               moduleId: 'production', label: 'BOM' },
+      { path: '/app/production/work-orders',       moduleId: 'production', label: 'Work Orders' },
+      { path: '/app/production/production-orders', moduleId: 'production', label: 'Production Orders' },
     ],
   },
   {

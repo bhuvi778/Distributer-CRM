@@ -30,7 +30,7 @@ export const PERMISSION_MODULES = [
 
   // Purchases
   { id: 'purchases',   path: '/app/purchases',   label: 'Purchase Orders', section: 'Purchases' },
-  { id: 'production',  path: '/app/production',  label: 'Production',      section: 'Purchases' },
+  { id: 'production',  path: '/app/production',  label: 'Production',      section: 'Production' },
 
   // Van Sales
   { id: 'van-sales',   path: '/app/van-sales',   label: 'Van Sales',       section: 'Van Sales' },

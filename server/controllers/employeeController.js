@@ -116,6 +116,67 @@ export const createEmployee = async (req, res) => {
   }
 };
 
+export const importEmployees = async (req, res) => {
+  try {
+    const rows = Array.isArray(req.body.rows) ? req.body.rows : [];
+    if (!rows.length) return res.status(400).json({ message: 'No user rows found' });
+
+    const results = { imported: 0, skipped: 0, errors: [] };
+    for (const [idx, row] of rows.entries()) {
+      try {
+        const name = String(row.name || '').trim();
+        const email = String(row.email || '').trim().toLowerCase();
+        const role = row.role || 'employee';
+        const password = row.password || 'Welcome@123';
+
+        if (!name || !email) {
+          results.skipped += 1;
+          results.errors.push({ row: idx + 1, message: 'Name and email required' });
+          continue;
+        }
+        if (role === 'super_admin' || (role === 'admin' && req.user.role !== 'super_admin')) {
+          results.skipped += 1;
+          results.errors.push({ row: idx + 1, message: 'Role not allowed' });
+          continue;
+        }
+        const exists = await User.findOne({ email });
+        if (exists) {
+          results.skipped += 1;
+          results.errors.push({ row: idx + 1, message: 'Email already exists' });
+          continue;
+        }
+
+        const defs = ROLE_DEFAULT_MODULES[role];
+        const allowedModules = defs === 'all'
+          ? PERMISSION_MODULES.filter((m) => !m.adminOnly).map((m) => m.path)
+          : pathsFromModuleIds(defs || ROLE_DEFAULT_MODULES.employee || []);
+
+        await User.create({
+          name,
+          email,
+          password,
+          role,
+          phone: row.phone || '',
+          jobTitle: row.jobTitle || row.jobtitle || '',
+          department: row.department || '',
+          employeeId: row.employeeId || row.employeeid || '',
+          isActive: row.isActive !== false,
+          allowedModules,
+          permissions: validateActions(row.permissions || []),
+          createdBy: req.user._id,
+        });
+        results.imported += 1;
+      } catch (error) {
+        results.skipped += 1;
+        results.errors.push({ row: idx + 1, message: error.message });
+      }
+    }
+    res.json(results);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 export const updateEmployee = async (req, res) => {
   try {
     const employee = await User.findById(req.params.id);

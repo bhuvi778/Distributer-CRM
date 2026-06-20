@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo } from 'react';
-import { Search, Edit2, UserX, RefreshCw, Shield, Plus, Check } from 'lucide-react';
+import { useState, useEffect, useMemo, useRef } from 'react';
+import { Search, Edit2, UserX, RefreshCw, Shield, Plus, Check, Upload } from 'lucide-react';
 import api from '../api/axios';
 import SlidePanel from '../components/common/SlidePanel';
 import { useAuth } from '../context/AuthContext';
@@ -33,6 +33,28 @@ const emptyForm = () => ({
   isActive: true,
 });
 
+const parseCSV = (text) => {
+  const lines = text.split(/\r?\n/).filter(Boolean);
+  if (lines.length < 2) return [];
+  const parseLine = (line) => line.match(/("([^"]|"")*"|[^,]+)/g)?.map((cell) => cell.replace(/^"|"$/g, '').replace(/""/g, '"').trim()) || [];
+  const headers = parseLine(lines[0]).map((h) => h.toLowerCase().replace(/\s+/g, ''));
+  return lines.slice(1).map((line) => {
+    const cells = parseLine(line);
+    const row = Object.fromEntries(headers.map((h, idx) => [h, cells[idx] || '']));
+    return {
+      name: row.name,
+      email: row.email,
+      password: row.password,
+      phone: row.phone,
+      role: row.role || row.usertype || 'employee',
+      jobTitle: row.jobtitle,
+      department: row.department,
+      employeeId: row.employeeid,
+      isActive: !['inactive', 'false', 'no'].includes(String(row.status || '').toLowerCase()),
+    };
+  });
+};
+
 export default function Employees() {
   const { user } = useAuth();
   const isAdmin = ['admin', 'super_admin'].includes(user?.role);
@@ -40,10 +62,12 @@ export default function Employees() {
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [roleFilter, setRoleFilter] = useState('');
   const [panelOpen, setPanelOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState(emptyForm());
+  const importRef = useRef(null);
 
   // Group modules by section for the permissions UI
   const moduleSections = useMemo(() => {
@@ -75,6 +99,7 @@ export default function Employees() {
   useEffect(() => { fetchData(); }, []);
 
   const filtered = employees.filter((e) =>
+    (!roleFilter || e.role === roleFilter) &&
     `${e.name} ${e.email} ${e.role} ${e.department}`.toLowerCase().includes(search.toLowerCase()),
   );
 
@@ -173,6 +198,22 @@ export default function Employees() {
     catch (e) { alert(e.response?.data?.message || 'Error'); }
   };
 
+  const handleImport = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    try {
+      const rows = parseCSV(await file.text()).filter((row) => row.name && row.email);
+      if (!rows.length) return alert('No valid user rows found. CSV must include name and email.');
+      const { data } = await api.post('/employees/import', { rows });
+      alert(`Imported ${data.imported || 0} users. Skipped ${data.skipped || 0}.`);
+      fetchData();
+    } catch (e) {
+      alert(e.response?.data?.message || 'Import failed');
+    } finally {
+      event.target.value = '';
+    }
+  };
+
   const roleLabel = (role) => USER_ROLES.find((r) => r.value === role)?.label || role;
 
   return (
@@ -184,21 +225,35 @@ export default function Employees() {
           <p className="text-xs text-[#757575] mt-0.5">Add team members and control exactly what each person can see in the sidebar</p>
         </div>
         {isAdmin && (
-          <button onClick={openAdd} className="so-btn-primary flex items-center gap-1.5">
-            <Plus size={15} /> Add User
-          </button>
+          <div className="flex items-center gap-2">
+            <button onClick={() => importRef.current?.click()} className="so-btn-secondary flex items-center gap-1.5 text-xs">
+              <Upload size={13} /> Import
+            </button>
+            <button onClick={openAdd} className="so-btn-primary flex items-center gap-1.5">
+              <Plus size={15} /> Add User
+            </button>
+            <input ref={importRef} type="file" accept=".csv,text/csv" className="hidden" onChange={handleImport} />
+          </div>
         )}
       </div>
 
-      {/* Search */}
-      <div className="relative w-72 mb-4">
-        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9e9e9e]" />
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
+      {/* Search / filters */}
+      <div className="flex flex-wrap items-center gap-2 mb-4">
+        <div className="relative w-72">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9e9e9e]" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
           placeholder="Search by name, email, role…"
-          className="so-input pl-9 w-full"
-        />
+            className="so-input pl-9 w-full"
+          />
+        </div>
+        <select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)} className="so-input w-52">
+          <option value="">Select User Type</option>
+          {USER_ROLES.map((role) => (
+            <option key={role.value} value={role.value}>{role.label}</option>
+          ))}
+        </select>
       </div>
 
       {/* Table */}

@@ -8,7 +8,7 @@ import Modal from '../components/common/Modal';
 import { exportToExcel } from '../utils/exportExcel';
 import { formatCurrency } from '../utils/helpers';
 
-const DESCRIPTION = 'Break company goals into individual KPIs per sales rep. Set revenue/order/collection targets, track achievement %, and view leaderboard for team recognition & incentives.';
+const DESCRIPTION = 'Break company goals into individual KPIs per sales rep. Set revenue/order/collection targets, track achievement %, and view achievement leaderboard for team recognition and incentives.';
 
 export default function Targets() {
   const { users } = useMasterData();
@@ -82,7 +82,7 @@ export default function Targets() {
 
   return (
     <div>
-      <PageHeader title="Target Meter" description={DESCRIPTION}
+      <PageHeader title="Achievements" description={DESCRIPTION}
         onAdd={can('manageTargets') ? () => { setForm({ title: '', type: 'revenue', period: 'monthly', companyTarget: 0, startDate: '', endDate: '', assignments: [] }); setModalOpen(true); } : undefined}
         onRefresh={fetchData} onExport={exportLeaderboard} loading={loading} addLabel="Set New Target" />
 

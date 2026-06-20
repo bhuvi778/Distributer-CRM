@@ -9,6 +9,7 @@ export default function DataPage({
   title, subtitle, endpoint, columns, formFields, defaultForm = {},
   renderActions, onCreate, formatRow,
 }) {
+  const writeEndpoint = endpoint.split('?')[0];
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -52,9 +53,9 @@ export default function DataPage({
       if (onCreate && !editItem) {
         await onCreate(form);
       } else if (editItem) {
-        await api.put(`${endpoint}/${editItem._id}`, form);
+        await api.put(`${writeEndpoint}/${editItem._id}`, form);
       } else {
-        await api.post(endpoint, form);
+        await api.post(writeEndpoint, form);
       }
       setModalOpen(false);
       fetchData();
@@ -65,7 +66,7 @@ export default function DataPage({
 
   const handleDelete = async (id) => {
     if (!confirm('Are you sure you want to delete this?')) return;
-    await api.delete(`${endpoint}/${id}`);
+    await api.delete(`${writeEndpoint}/${id}`);
     fetchData();
   };
 

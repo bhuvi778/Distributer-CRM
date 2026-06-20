@@ -11,6 +11,7 @@ const createCRUD = (Model, populateFields = [], resourceName = null) => ({
       if (req.query.salesRep) filter.salesRep = req.query.salesRep;
       if (req.query.type) filter.type = req.query.type;
       if (req.query.paymentType) filter.paymentType = req.query.paymentType;
+      if (req.query.productionType) filter.productionType = req.query.productionType;
       if (req.query.isActive !== undefined) filter.isActive = req.query.isActive === 'true';
 
       if (resourceName) {

@@ -123,7 +123,13 @@ function AppRoutes() {
 
         {/* ── PURCHASES ── */}
         <Route path="purchases"  element={<RoleRoute path="/app/purchases"><Purchases /></RoleRoute>} />
-        <Route path="production" element={<RoleRoute path="/app/production"><Production /></RoleRoute>} />
+        <Route path="production">
+          <Route index element={<Navigate to="production-orders" replace />} />
+          <Route path="grm" element={<RoleRoute path="/app/production"><Production /></RoleRoute>} />
+          <Route path="bom" element={<RoleRoute path="/app/production"><Production /></RoleRoute>} />
+          <Route path="work-orders" element={<RoleRoute path="/app/production"><Production /></RoleRoute>} />
+          <Route path="production-orders" element={<RoleRoute path="/app/production"><Production /></RoleRoute>} />
+        </Route>
 
         {/* Van Sales */}
         <Route path="van-sales" element={<RoleRoute path="/app/van-sales"><VanSales /></RoleRoute>} />

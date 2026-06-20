@@ -4,16 +4,17 @@ import * as emp from '../controllers/employeeController.js';
 
 const router = Router();
 
-router.get('/config', protect, authorize('admin', 'manager'), emp.getPermissionConfig);
-router.post('/role-defaults', protect, authorize('admin', 'manager'), emp.applyRoleDefaults);
+router.get('/config', protect, authorize('super_admin', 'admin', 'manager'), emp.getPermissionConfig);
+router.post('/role-defaults', protect, authorize('super_admin', 'admin', 'manager'), emp.applyRoleDefaults);
+router.post('/import', protect, authorize('super_admin', 'admin'), emp.importEmployees);
 
 router.route('/')
-  .get(protect, authorize('admin', 'manager'), emp.listEmployees)
-  .post(protect, authorize('admin'), emp.createEmployee);
+  .get(protect, authorize('super_admin', 'admin', 'manager'), emp.listEmployees)
+  .post(protect, authorize('super_admin', 'admin'), emp.createEmployee);
 
 router.route('/:id')
-  .get(protect, authorize('admin', 'manager'), emp.getEmployee)
-  .put(protect, authorize('admin'), emp.updateEmployee)
-  .delete(protect, authorize('admin'), emp.deleteEmployee);
+  .get(protect, authorize('super_admin', 'admin', 'manager'), emp.getEmployee)
+  .put(protect, authorize('super_admin', 'admin'), emp.updateEmployee)
+  .delete(protect, authorize('super_admin', 'admin'), emp.deleteEmployee);
 
 export default router;

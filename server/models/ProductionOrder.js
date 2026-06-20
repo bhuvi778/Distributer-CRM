@@ -10,8 +10,16 @@ const bomItemSchema = new mongoose.Schema({
 
 const productionOrderSchema = new mongoose.Schema({
   orderNumber: { type: String, unique: true },
-  finishedGood: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
-  quantity: { type: Number, required: true },
+  productionType: {
+    type: String,
+    enum: ['grm', 'bom', 'work_order', 'production_order'],
+    default: 'production_order',
+  },
+  referenceNumber: String,
+  title: String,
+  materialName: String,
+  finishedGood: { type: mongoose.Schema.Types.ObjectId, ref: 'Product' },
+  quantity: { type: Number, default: 0 },
   bom: [bomItemSchema],
   status: { type: String, enum: ['planned', 'in_progress', 'quality_check', 'completed', 'cancelled'], default: 'planned' },
   startDate: Date,
@@ -26,7 +34,9 @@ const productionOrderSchema = new mongoose.Schema({
 productionOrderSchema.pre('save', async function (next) {
   if (!this.orderNumber) {
     const count = await mongoose.model('ProductionOrder').countDocuments();
-    this.orderNumber = `PO-${String(count + 1).padStart(5, '0')}`;
+    const prefixes = { grm: 'GRM', bom: 'BOM', work_order: 'WO', production_order: 'PO' };
+    const prefix = prefixes[this.productionType] || 'PO';
+    this.orderNumber = `${prefix}-${String(count + 1).padStart(5, '0')}`;
   }
   next();
 });
