@@ -22,11 +22,11 @@ export const productCtrl = createCRUD(Product);
 export const routeCtrl = createCRUD(Route, ['assignedReps', 'outlets']);
 export const salesOrderCtrl = createCRUD(SalesOrder, ['outlet', 'salesRep', 'route', 'items.product'], 'orders');
 export const invoiceCtrl = createCRUD(Invoice, ['outlet', 'salesRep', 'salesOrder'], 'invoices');
-export const paymentCtrl = createCRUD(Payment, ['outlet', 'invoice', 'collectedBy'], 'payments');
+export const paymentCtrl = createCRUD(Payment, ['outlet', 'party', 'invoice', 'collectedBy'], 'payments');
 export const inventoryCtrl = createCRUD(Inventory, ['product']);
 export const attendanceCtrl = createCRUD(Attendance, ['user'], 'attendance');
 export const locationCtrl = createCRUD(LocationTrack, ['user', 'route']);
-export const vanSalesCtrl = createCRUD(VanSales, ['salesRep', 'route', 'loadIn.product', 'loadOut.product'], 'van-sales');
+export const vanSalesCtrl = createCRUD(VanSales, ['assignedTo', 'salesRep', 'route', 'loadIn.product', 'loadOut.product'], 'van-sales');
 export const targetCtrl = createCRUD(Target, ['assignments.user']);
 export const productionCtrl = createCRUD(ProductionOrder, ['finishedGood', 'bom.rawMaterial'], 'production');
 export const purchaseCtrl = createCRUD(Purchase, ['outlet', 'items.product'], 'purchases');
@@ -221,12 +221,17 @@ export const getOutstandingReport = async (req, res) => {
 
 export const createPayment = async (req, res) => {
   try {
+    const paymentType = req.body.paymentType === 'out' ? 'out' : 'in';
     const payment = await Payment.create({
       ...req.body,
+      paymentType,
+      invoice: paymentType === 'out' ? undefined : req.body.invoice,
+      outlet: paymentType === 'in' ? req.body.outlet : req.body.outlet || undefined,
       collectedBy: req.body.collectedBy || req.user._id,
     });
     const populated = await Payment.findById(payment._id)
       .populate('outlet', 'name code')
+      .populate('party', 'name code type')
       .populate('invoice', 'invoiceNumber balanceDue')
       .populate('collectedBy', 'name');
     res.status(201).json(populated);
@@ -245,7 +250,7 @@ export const approvePayment = async (req, res) => {
       { status: req.body.status },
       { new: true }
     );
-    if (payment.status === 'approved' && payment.invoice) {
+    if (payment.paymentType !== 'out' && payment.status === 'approved' && payment.invoice) {
       const invoice = await Invoice.findById(payment.invoice);
       invoice.paidAmount += payment.amount;
       invoice.balanceDue = invoice.grandTotal - invoice.paidAmount;
@@ -254,6 +259,68 @@ export const approvePayment = async (req, res) => {
       await Outlet.findByIdAndUpdate(payment.outlet, { $inc: { outstandingBalance: -payment.amount } });
     }
     res.json(payment);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const createVanSale = async (req, res) => {
+  try {
+    const body = { ...req.body };
+    body.vehicleNo = body.vehicleNo || body.vanNumber;
+    body.vanNumber = body.vanNumber || body.vehicleNo;
+    body.assignedTo = body.assignedTo || body.salesRep;
+    body.salesRep = body.salesRep || body.assignedTo;
+    body.loadIn = (body.loadIn || []).map((item, idx) => {
+      const qty = Number(item.qty ?? item.loadedQty ?? 0);
+      return {
+        ...item,
+        serialNo: item.serialNo || String(idx + 1),
+        itemCode: item.itemCode || item.product?.sku,
+        itemName: item.itemName || item.productName || item.product?.name,
+        productName: item.productName || item.itemName || item.product?.name,
+        unit: item.unit || item.product?.unit,
+        qty,
+        loadedQty: Number(item.loadedQty ?? qty),
+      };
+    });
+    const vanSale = await VanSales.create(body);
+    const populated = await VanSales.findById(vanSale._id)
+      .populate('assignedTo', 'name')
+      .populate('salesRep', 'name')
+      .populate('route', 'name area')
+      .populate('loadIn.product', 'name sku unit');
+    res.status(201).json(populated);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const updateVanSale = async (req, res) => {
+  try {
+    const body = { ...req.body };
+    body.vehicleNo = body.vehicleNo || body.vanNumber;
+    body.vanNumber = body.vanNumber || body.vehicleNo;
+    body.assignedTo = body.assignedTo || body.salesRep;
+    body.salesRep = body.salesRep || body.assignedTo;
+    body.loadIn = (body.loadIn || []).map((item, idx) => {
+      const qty = Number(item.qty ?? item.loadedQty ?? 0);
+      return {
+        ...item,
+        serialNo: item.serialNo || String(idx + 1),
+        itemName: item.itemName || item.productName,
+        productName: item.productName || item.itemName,
+        qty,
+        loadedQty: Number(item.loadedQty ?? qty),
+      };
+    });
+    const vanSale = await VanSales.findByIdAndUpdate(req.params.id, body, { new: true, runValidators: true })
+      .populate('assignedTo', 'name')
+      .populate('salesRep', 'name')
+      .populate('route', 'name area')
+      .populate('loadIn.product', 'name sku unit');
+    if (!vanSale) return res.status(404).json({ message: 'Not found' });
+    res.json(vanSale);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

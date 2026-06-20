@@ -5,7 +5,7 @@ let cache = null;
 let cacheTime = 0;
 
 export default function useMasterData() {
-  const [data, setData] = useState(cache || { outlets: [], products: [], users: [], routes: [], invoices: [] });
+  const [data, setData] = useState(cache || { outlets: [], products: [], users: [], routes: [], invoices: [], warehouses: [] });
   const [loading, setLoading] = useState(!cache);
 
   useEffect(() => {

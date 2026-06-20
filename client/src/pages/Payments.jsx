@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Search, Edit2, Trash2, Eye, Check, X } from 'lucide-react';
 import api from '../api/axios';
 import { useAuth } from '../context/AuthContext';
@@ -8,64 +9,85 @@ import Modal from '../components/common/Modal';
 import Badge from '../components/common/Badge';
 import DetailModal from '../components/common/DetailModal';
 import { exportToExcel } from '../utils/exportExcel';
-import { formatCurrency, formatDate, formatDateTime } from '../utils/helpers';
+import { formatCurrency, formatDate } from '../utils/helpers';
 
-const DESCRIPTION = 'Collect invoice-wise partial or full payments on the go. Select outlet, link to invoice, enter amount & payment mode. Manager can approve/reject pending payments to adjust customer outstanding balance.';
-
-const EXPORT_COLS = [
-  { key: 'paymentNumber', label: 'Payment #', accessor: 'paymentNumber' },
-  { key: 'outlet', label: 'Outlet', accessor: 'outlet.name' },
-  { key: 'invoice', label: 'Invoice #', accessor: 'invoice.invoiceNumber' },
-  { key: 'amount', label: 'Amount', accessor: 'amount' },
-  { key: 'mode', label: 'Mode', accessor: 'mode' },
-  { key: 'collectedBy', label: 'Collected By', accessor: 'collectedBy.name' },
-  { key: 'status', label: 'Status', accessor: 'status' },
-  { key: 'reference', label: 'Reference', accessor: 'referenceNo' },
-  { key: 'date', label: 'Date', accessor: 'paymentDate', renderExport: (v) => formatDate(v) },
+const modes = [
+  ['cash', 'Cash'],
+  ['upi', 'UPI'],
+  ['cheque', 'Cheque'],
+  ['bank_transfer', 'Bank Transfer'],
+  ['card', 'Card'],
 ];
 
-const emptyForm = () => ({
-  outlet: '', invoice: '', amount: '', mode: 'cash', referenceNo: '', notes: '', status: 'pending', isPartial: false,
+const emptyForm = (type = 'in') => ({
+  paymentType: type,
+  outlet: '',
+  party: '',
+  paidToName: '',
+  category: '',
+  invoice: '',
+  amount: '',
+  mode: 'cash',
+  referenceNo: '',
+  notes: '',
+  status: 'pending',
+  isPartial: false,
 });
 
 export default function Payments() {
   const { user, can } = useAuth();
-  const { outlets, invoices, loading: mdLoading } = useMasterData();
+  const location = useLocation();
+  const paymentType = location.pathname.includes('/out') ? 'out' : 'in';
+  const isOut = paymentType === 'out';
+  const title = isOut ? 'Payment Out' : 'Payment In';
+  const { outlets, invoices } = useMasterData();
+  const [parties, setParties] = useState([]);
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [viewItem, setViewItem] = useState(null);
   const [editItem, setEditItem] = useState(null);
-  const [form, setForm] = useState(emptyForm());
+  const [form, setForm] = useState(emptyForm(paymentType));
 
   const fetchData = async () => {
     setLoading(true);
-    const { data } = await api.get('/payments');
+    const { data } = await api.get('/payments', { params: { paymentType } });
     setPayments(data);
     setLoading(false);
   };
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => {
+    fetchData();
+    setForm(emptyForm(paymentType));
+    setEditItem(null);
+  }, [paymentType]);
+
+  useEffect(() => {
+    if (!isOut) return;
+    api.get('/parties', { params: { type: 'supplier' } })
+      .then(({ data }) => setParties(data))
+      .catch(() => setParties([]));
+  }, [isOut]);
 
   const filtered = payments.filter((p) => JSON.stringify(p).toLowerCase().includes(search.toLowerCase()));
-
-  const outletInvoices = form.outlet
-    ? invoices.filter((i) => (i.outlet?._id || i.outlet) === form.outlet)
-    : invoices;
-
+  const outletInvoices = form.outlet ? invoices.filter((i) => (i.outlet?._id || i.outlet) === form.outlet) : invoices;
   const selectedInvoice = invoices.find((i) => i._id === form.invoice);
 
   const openCreate = () => {
     setEditItem(null);
-    setForm(emptyForm());
+    setForm(emptyForm(paymentType));
     setModalOpen(true);
   };
 
   const openEdit = (item) => {
     setEditItem(item);
     setForm({
+      paymentType,
       outlet: item.outlet?._id || item.outlet || '',
+      party: item.party?._id || item.party || '',
+      paidToName: item.paidToName || '',
+      category: item.category || '',
       invoice: item.invoice?._id || item.invoice || '',
       amount: item.amount,
       mode: item.mode,
@@ -79,18 +101,23 @@ export default function Payments() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.outlet) return alert('Please select an outlet');
+    if (!isOut && !form.outlet) return alert('Please select an outlet');
+    if (isOut && !form.party && !form.paidToName) return alert('Please select or enter payment receiver');
     if (!form.amount || Number(form.amount) <= 0) return alert('Please enter valid amount');
 
     const payload = {
-      outlet: form.outlet,
-      invoice: form.invoice || undefined,
+      paymentType,
+      outlet: isOut ? form.outlet || undefined : form.outlet,
+      party: isOut ? form.party || undefined : undefined,
+      paidToName: isOut ? form.paidToName : undefined,
+      category: isOut ? form.category : undefined,
+      invoice: !isOut && form.invoice ? form.invoice : undefined,
       amount: Number(form.amount),
       mode: form.mode,
       referenceNo: form.referenceNo,
       notes: form.notes,
       status: editItem ? form.status : 'pending',
-      isPartial: form.isPartial,
+      isPartial: !isOut && form.isPartial,
       collectedBy: user?._id,
     };
 
@@ -121,23 +148,38 @@ export default function Payments() {
     fetchData();
   };
 
+  const payeeName = (row) => isOut
+    ? row.party?.name || row.paidToName || row.outlet?.name || '-'
+    : row.outlet?.name || '-';
+
+  const exportCols = [
+    { key: 'paymentNumber', label: 'Payment #', accessor: 'paymentNumber' },
+    { key: 'type', label: 'Type', accessor: 'paymentType' },
+    { key: 'payee', label: isOut ? 'Paid To' : 'Received From', accessor: 'outlet.name', renderExport: (_, row) => payeeName(row) },
+    { key: 'invoice', label: 'Invoice #', accessor: 'invoice.invoiceNumber' },
+    { key: 'amount', label: 'Amount', accessor: 'amount' },
+    { key: 'mode', label: 'Mode', accessor: 'mode' },
+    { key: 'status', label: 'Status', accessor: 'status' },
+    { key: 'date', label: 'Date', accessor: 'paymentDate', renderExport: (v) => formatDate(v) },
+  ];
+
   return (
     <div>
       <PageHeader
-        title="Payment Collection"
-        description={DESCRIPTION}
+        title={title}
+        description={isOut ? 'Record outgoing payments with receiver, amount, mode, reference, status, and notes.' : 'Record incoming invoice-wise partial or full payments with approval flow.'}
         onAdd={openCreate}
         onRefresh={fetchData}
-        onExport={() => exportToExcel(filtered, 'payment_collections', EXPORT_COLS)}
+        onExport={() => exportToExcel(filtered, isOut ? 'payment_out' : 'payment_in', exportCols)}
         loading={loading}
-        addLabel="Collect Payment"
+        addLabel={isOut ? 'Add Payment Out' : 'Add Payment In'}
       />
 
       <div className="glass-card overflow-hidden">
         <div className="p-4 border-b border-surface-100 flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
           <div className="relative max-w-sm flex-1">
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-surface-800/40" />
-            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search payment #, outlet..." className="input-field !pl-9 !py-2" />
+            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search payment #, name..." className="input-field !pl-9 !py-2" />
           </div>
           <div className="flex gap-2 text-xs">
             <span className="px-2 py-1 bg-yellow-50 text-yellow-700 rounded-lg">Pending: {payments.filter(p => p.status === 'pending').length}</span>
@@ -149,11 +191,10 @@ export default function Payments() {
             <thead className="bg-surface-50/80">
               <tr>
                 <th className="table-header">Payment #</th>
-                <th className="table-header">Outlet</th>
+                <th className="table-header">{isOut ? 'Paid To' : 'Received From'}</th>
                 <th className="table-header">Invoice</th>
                 <th className="table-header">Amount</th>
                 <th className="table-header">Mode</th>
-                <th className="table-header">Collected By</th>
                 <th className="table-header">Status</th>
                 <th className="table-header">Date</th>
                 <th className="table-header text-right">Actions</th>
@@ -161,17 +202,16 @@ export default function Payments() {
             </thead>
             <tbody className="divide-y divide-surface-100">
               {loading ? (
-                <tr><td colSpan={9} className="table-cell text-center py-12 text-surface-800/40">Loading...</td></tr>
+                <tr><td colSpan={8} className="table-cell text-center py-12 text-surface-800/40">Loading...</td></tr>
               ) : filtered.length === 0 ? (
-                <tr><td colSpan={9} className="table-cell text-center py-12 text-surface-800/40">No payments recorded. Click "Collect Payment" to add.</td></tr>
+                <tr><td colSpan={8} className="table-cell text-center py-12 text-surface-800/40">No records found.</td></tr>
               ) : filtered.map((row) => (
                 <tr key={row._id} className="hover:bg-surface-50/50">
                   <td className="table-cell font-mono font-medium">{row.paymentNumber}</td>
-                  <td className="table-cell">{row.outlet?.name || '-'}</td>
+                  <td className="table-cell">{payeeName(row)}</td>
                   <td className="table-cell font-mono text-sm">{row.invoice?.invoiceNumber || '-'}</td>
-                  <td className="table-cell font-mono font-medium text-green-700">{formatCurrency(row.amount)}</td>
+                  <td className={`table-cell font-mono font-medium ${isOut ? 'text-red-600' : 'text-green-700'}`}>{formatCurrency(row.amount)}</td>
                   <td className="table-cell"><Badge status={row.mode} label={row.mode?.toUpperCase()} /></td>
-                  <td className="table-cell">{row.collectedBy?.name || '-'}</td>
                   <td className="table-cell"><Badge status={row.status} /></td>
                   <td className="table-cell">{formatDate(row.paymentDate)}</td>
                   <td className="table-cell text-right">
@@ -194,49 +234,58 @@ export default function Payments() {
         </div>
       </div>
 
-      <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title={editItem ? `Edit ${editItem.paymentNumber}` : 'Collect New Payment'} size="lg">
+      <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title={editItem ? `Edit ${editItem.paymentNumber}` : title} size="lg">
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="p-3 bg-amber-50 rounded-xl text-xs text-amber-800">
-            <strong>How to collect:</strong> Select outlet → Choose invoice (optional) → Enter amount → Select payment mode (Cash/UPI/Cheque) → Submit for approval.
-          </div>
-
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {!isOut ? (
+              <>
+                <div>
+                  <label className="block text-sm font-medium mb-1.5">Outlet / Store *</label>
+                  <select value={form.outlet} onChange={(e) => setForm({ ...form, outlet: e.target.value, invoice: '' })} className="input-field" required>
+                    <option value="">Select outlet...</option>
+                    {outlets.map((o) => <option key={o._id} value={o._id}>{o.name} - Outstanding: {formatCurrency(o.outstandingBalance)}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1.5">Link to Invoice</label>
+                  <select value={form.invoice} onChange={(e) => {
+                    const inv = invoices.find((i) => i._id === e.target.value);
+                    setForm({ ...form, invoice: e.target.value, amount: inv ? inv.balanceDue : form.amount });
+                  }} className="input-field">
+                    <option value="">Select invoice (optional)...</option>
+                    {outletInvoices.map((i) => <option key={i._id} value={i._id}>{i.invoiceNumber} - Due: {formatCurrency(i.balanceDue)}</option>)}
+                  </select>
+                </div>
+              </>
+            ) : (
+              <>
+                <div>
+                  <label className="block text-sm font-medium mb-1.5">Supplier / Party</label>
+                  <select value={form.party} onChange={(e) => setForm({ ...form, party: e.target.value })} className="input-field">
+                    <option value="">Select supplier...</option>
+                    {parties.map((p) => <option key={p._id} value={p._id}>{p.name}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1.5">Paid To Name</label>
+                  <input value={form.paidToName} onChange={(e) => setForm({ ...form, paidToName: e.target.value })} className="input-field" placeholder="Vendor, employee, transport, etc." />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1.5">Category</label>
+                  <input value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} className="input-field" placeholder="Purchase, salary, transport..." />
+                </div>
+              </>
+            )}
+
             <div>
-              <label className="block text-sm font-medium mb-1.5">Outlet / Store *</label>
-              <select value={form.outlet} onChange={(e) => setForm({ ...form, outlet: e.target.value, invoice: '' })} className="input-field" required>
-                <option value="">Select outlet...</option>
-                {outlets.map((o) => (
-                  <option key={o._id} value={o._id}>{o.name} — Outstanding: ₹{o.outstandingBalance}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1.5">Link to Invoice</label>
-              <select value={form.invoice} onChange={(e) => {
-                const inv = invoices.find((i) => i._id === e.target.value);
-                setForm({ ...form, invoice: e.target.value, amount: inv ? inv.balanceDue : form.amount });
-              }} className="input-field">
-                <option value="">Select invoice (optional)...</option>
-                {outletInvoices.map((i) => (
-                  <option key={i._id} value={i._id}>{i.invoiceNumber} — Due: ₹{i.balanceDue}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1.5">Amount (₹) *</label>
+              <label className="block text-sm font-medium mb-1.5">Amount *</label>
               <input type="number" min="1" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} className="input-field" required />
-              {selectedInvoice && (
-                <p className="text-xs text-surface-800/50 mt-1">Invoice balance: {formatCurrency(selectedInvoice.balanceDue)}</p>
-              )}
+              {selectedInvoice && <p className="text-xs text-surface-800/50 mt-1">Invoice balance: {formatCurrency(selectedInvoice.balanceDue)}</p>}
             </div>
             <div>
               <label className="block text-sm font-medium mb-1.5">Payment Mode *</label>
               <select value={form.mode} onChange={(e) => setForm({ ...form, mode: e.target.value })} className="input-field">
-                <option value="cash">Cash</option>
-                <option value="upi">UPI</option>
-                <option value="cheque">Cheque</option>
-                <option value="bank_transfer">Bank Transfer</option>
-                <option value="card">Card</option>
+                {modes.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
               </select>
             </div>
             <div>
@@ -253,12 +302,14 @@ export default function Payments() {
                 </select>
               </div>
             )}
-            <div className="sm:col-span-2">
-              <label className="flex items-center gap-2 text-sm">
-                <input type="checkbox" checked={form.isPartial} onChange={(e) => setForm({ ...form, isPartial: e.target.checked })} />
-                Partial payment (remaining balance will stay on invoice)
-              </label>
-            </div>
+            {!isOut && (
+              <div className="sm:col-span-2">
+                <label className="flex items-center gap-2 text-sm">
+                  <input type="checkbox" checked={form.isPartial} onChange={(e) => setForm({ ...form, isPartial: e.target.checked })} />
+                  Partial payment
+                </label>
+              </div>
+            )}
           </div>
 
           <div>
@@ -268,21 +319,22 @@ export default function Payments() {
 
           <div className="flex justify-end gap-3 pt-4 border-t">
             <button type="button" onClick={() => setModalOpen(false)} className="btn-secondary">Cancel</button>
-            <button type="submit" className="btn-primary">{editItem ? 'Update Payment' : 'Submit Collection'}</button>
+            <button type="submit" className="btn-primary">{editItem ? 'Update Payment' : 'Save Payment'}</button>
           </div>
         </form>
       </Modal>
 
       <DetailModal isOpen={!!viewItem} onClose={() => setViewItem(null)} title="Payment Details" data={viewItem} fields={[
         { label: 'Payment Number', accessor: 'paymentNumber' },
-        { label: 'Outlet', accessor: 'outlet.name' },
+        { label: 'Type', accessor: 'paymentType' },
+        { label: isOut ? 'Paid To' : 'Received From', accessor: isOut ? 'party.name' : 'outlet.name' },
+        { label: 'Paid To Name', accessor: 'paidToName' },
+        { label: 'Category', accessor: 'category' },
         { label: 'Invoice', accessor: 'invoice.invoiceNumber' },
         { label: 'Amount', accessor: 'amount', type: 'currency' },
         { label: 'Payment Mode', accessor: 'mode', type: 'badge' },
-        { label: 'Collected By', accessor: 'collectedBy.name' },
         { label: 'Status', accessor: 'status', type: 'badge' },
         { label: 'Reference No', accessor: 'referenceNo' },
-        { label: 'Partial Payment', accessor: 'isPartial', type: 'boolean' },
         { label: 'Payment Date', accessor: 'paymentDate', type: 'datetime' },
         { label: 'Notes', accessor: 'notes' },
       ]} />

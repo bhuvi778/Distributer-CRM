@@ -9,6 +9,7 @@ function RouteModal({ editing, regions, cities, warehouses, onClose, onSave }) {
     region: '',
     city: '',
     warehouse: '',
+    pincode: '',
   };
 
   const [form, setForm] = useState(
@@ -18,10 +19,13 @@ function RouteModal({ editing, regions, cities, warehouses, onClose, onSave }) {
           region:    editing.region?._id || editing.region || '',
           city:      editing.city?._id   || editing.city   || '',
           warehouse: editing.warehouse  || '',
+          pincode:   editing.pincode    || '',
         }
       : emptyForm,
   );
   const [saving, setSaving] = useState(false);
+  const [pinQuery, setPinQuery] = useState(editing?.pincode || editing?.name || '');
+  const [pinSuggestions, setPinSuggestions] = useState([]);
 
   // Filter cities by selected region
   const filteredCities = form.region
@@ -29,6 +33,33 @@ function RouteModal({ editing, regions, cities, warehouses, onClose, onSave }) {
     : cities;
 
   const f = (k, v) => setForm(p => ({ ...p, [k]: v }));
+
+  useEffect(() => {
+    const q = pinQuery.trim();
+    if (q.length < 2) {
+      setPinSuggestions([]);
+      return undefined;
+    }
+    const timer = setTimeout(async () => {
+      try {
+        const { data } = await api.get('/pincodes/search', { params: { q } });
+        setPinSuggestions(data);
+      } catch {
+        setPinSuggestions([]);
+      }
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [pinQuery]);
+
+  const selectPincode = (pin) => {
+    setForm(p => ({
+      ...p,
+      name: p.name || pin.name,
+      pincode: pin.pincode,
+    }));
+    setPinQuery(`${pin.pincode} - ${pin.name}`);
+    setPinSuggestions([]);
+  };
 
   const handleSave = async () => {
     if (!form.name)   return alert('Name is required');
@@ -116,6 +147,25 @@ function RouteModal({ editing, regions, cities, warehouses, onClose, onSave }) {
               placeholder="Area / Route name"
               autoFocus
             />
+          </div>
+
+          <div>
+            <label className="so-label">Pincode</label>
+            <input
+              className="so-input w-full"
+              value={form.pincode}
+              onChange={e => { f('pincode', e.target.value); setPinQuery(e.target.value); }}
+              placeholder="Type pincode or post office"
+            />
+            {pinSuggestions.length > 0 && (
+              <div className="mt-2 border border-[#e0e0e0] rounded bg-white max-h-40 overflow-auto">
+                {pinSuggestions.map((pin) => (
+                  <button key={`${pin.name}-${pin.pincode}`} type="button" onClick={() => selectPincode(pin)} className="block w-full text-left px-3 py-2 text-xs hover:bg-[#f5f5f5]">
+                    <span className="font-mono">{pin.pincode}</span> - {pin.name}, {pin.district}, {pin.state}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
@@ -235,17 +285,18 @@ export default function Areas() {
               <th>City</th>
               <th>State</th>
               <th>Warehouse</th>
+              <th>Pincode</th>
               <th>Region</th>
               <th className="w-20 text-center">Action</th>
             </tr>
           </thead>
           <tbody>
             {loading && (
-              <tr><td colSpan={7} className="text-center py-10 text-[#9e9e9e]">Loading…</td></tr>
+              <tr><td colSpan={8} className="text-center py-10 text-[#9e9e9e]">Loading…</td></tr>
             )}
             {!loading && displayed.length === 0 && (
               <tr>
-                <td colSpan={7} className="text-center py-10 text-[#9e9e9e]">
+                <td colSpan={8} className="text-center py-10 text-[#9e9e9e]">
                   No areas found.{' '}
                   <button onClick={openAdd} className="text-[#1e88e5] hover:underline">Add one</button>
                 </td>
@@ -258,6 +309,7 @@ export default function Areas() {
                 <td>{a.city?.name || '—'}</td>
                 <td>{a.city?.state || '—'}</td>
                 <td>{a.warehouse || '—'}</td>
+                <td><span className="font-mono text-xs">{a.pincode || '—'}</span></td>
                 <td>{a.region?.name || '—'}</td>
                 <td>
                   <div className="flex gap-1 justify-center">
