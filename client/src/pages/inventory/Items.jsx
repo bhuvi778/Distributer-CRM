@@ -17,6 +17,7 @@ const ADJ_TYPES   = [
 
 const emptyForm = () => ({
   name: '', sku: '', description: '', category: '', brand: '',
+  warehouse: 'Main',
   unit: 'Pcs', secondaryUnit: '', conversionFactor: 1,
   mrp: '', sellingPrice: '', purchasePrice: '',
   discount: 0, discountType: 'percent', offerText: '',
@@ -162,11 +163,13 @@ export default function Items() {
   const [loading, setLoading]       = useState(true);
   const [search, setSearch]         = useState('');
   const [catFilter, setCatFilter]   = useState('');
+  const [statusFilter, setStatusFilter] = useState('active');
+  const [warehouseFilter, setWarehouseFilter] = useState('');
   const [brandFilter, setBrandFilter] = useState('');
   const [panelOpen, setPanelOpen]   = useState(false);
   const [editing, setEditing]       = useState(null);
   const [form, setForm]             = useState(emptyForm());
-  const [sections, setSections]     = useState({ general: true, price: true, stock: true, batch: false });
+  const [sections, setSections]     = useState({ general: true, settings: true, price: true, stock: true, batch: false });
   const [adjustItem, setAdjustItem] = useState(null);
   const [saving, setSaving]         = useState(false);
   const imgRef = useRef();
@@ -176,7 +179,7 @@ export default function Items() {
     setLoading(true);
     try {
       const [itemRes, whRes] = await Promise.all([
-        api.get('/inventory/items', { params: { search: search || undefined, category: catFilter || undefined } }),
+        api.get('/inventory/items', { params: { search: search || undefined, category: catFilter || undefined, status: statusFilter || undefined, warehouse: warehouseFilter || undefined } }),
         api.get('/inventory/warehouses').catch(() => ({ data: [] })),
       ]);
       const data = itemRes.data;
@@ -185,18 +188,18 @@ export default function Items() {
       setCategories([...new Set(data.map(i => i.category).filter(Boolean))]);
       setBrands([...new Set(data.map(i => i.brand).filter(Boolean))]);
     } finally { setLoading(false); }
-  }, [search, catFilter]);
+  }, [search, catFilter, statusFilter, warehouseFilter]);
 
   useEffect(() => { load(); }, [load]);
 
   const displayed = brandFilter ? items.filter(i => i.brand === brandFilter) : items;
 
   // Open forms
-  const openAdd = () => { setEditing(null); setForm(emptyForm()); setSections({ general: true, price: true, stock: true, batch: false }); setPanelOpen(true); };
+  const openAdd = () => { setEditing(null); setForm({ ...emptyForm(), warehouse: warehouseFilter || 'Main' }); setSections({ general: true, settings: true, price: true, stock: true, batch: false }); setPanelOpen(true); };
   const openEdit = (item) => {
     setEditing(item);
-    setForm({ ...emptyForm(), ...item, openingStock: item.stock || 0 });
-    setSections({ general: true, price: true, stock: true, batch: !!item.trackBatch });
+    setForm({ ...emptyForm(), ...item, warehouse: warehouseFilter || item.selectedWarehouse || 'Main', openingStock: item.stock || 0 });
+    setSections({ general: true, settings: true, price: true, stock: true, batch: !!item.trackBatch });
     setPanelOpen(true);
   };
 
@@ -210,7 +213,7 @@ export default function Items() {
       if (editing) {
         await api.put(`/inventory/items/${editing._id}`, payload);
       } else {
-        const { data } = await api.post('/inventory/items', { ...payload, openingStock: form.openingStock || 0 });
+        await api.post('/inventory/items', { ...payload, openingStock: form.openingStock || 0, warehouse: form.warehouse || 'Main' });
       }
       setPanelOpen(false); load();
     } catch (e) { alert(e.response?.data?.message || 'Error saving'); }
@@ -266,6 +269,16 @@ export default function Items() {
           <option value="">Select Category</option>
           {categories.map(c => <option key={c}>{c}</option>)}
         </select>
+        <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="so-input w-36 text-xs">
+          <option value="">All Status</option>
+          <option value="active">Active</option>
+          <option value="inactive">Inactive</option>
+        </select>
+        <select value={warehouseFilter} onChange={e => setWarehouseFilter(e.target.value)} className="so-input w-44 text-xs">
+          <option value="">All Warehouses</option>
+          <option value="Main">Main Warehouse</option>
+          {warehouses.map(w => <option key={w._id} value={w.name}>{w.name}</option>)}
+        </select>
         <select value={brandFilter} onChange={e => setBrandFilter(e.target.value)} className="so-input w-36 text-xs">
           <option value="">Select Brand</option>
           {brands.map(b => <option key={b}>{b}</option>)}
@@ -282,7 +295,7 @@ export default function Items() {
               <th>Item Name</th>
               <th>Stock</th>
               <th>Purchase Price</th>
-              <th className="w-20"></th>
+              <th className="w-36"></th>
             </tr>
           </thead>
           <tbody>
@@ -331,7 +344,7 @@ export default function Items() {
                 {/* Actions */}
                 <td>
                   <div className="flex gap-1 justify-end">
-                    <button onClick={() => setAdjustItem(item)} className="so-icon-btn w-7 h-7" title="Adjust Stock"><Settings2 size={12} /></button>
+                    <button onClick={() => setAdjustItem(item)} className="so-btn-secondary !px-2 !py-1 text-xs" title="Adjust Stock"><Settings2 size={12} /> Adjust</button>
                     <button onClick={() => openEdit(item)} className="so-icon-btn w-7 h-7" title="Edit"><Edit2 size={12} /></button>
                     <button onClick={() => remove(item._id)} className="so-icon-btn w-7 h-7 text-red-400 hover:bg-red-50" title="Deactivate"><Trash2 size={12} /></button>
                   </div>
@@ -364,16 +377,10 @@ export default function Items() {
           {/* ── GENERAL DETAILS ── */}
           <Section title="General Details" open={sections.general} onToggle={() => tog('general')}>
             <div className="space-y-3">
-              {/* Item Name + Active toggle */}
-              <div className="flex items-start gap-3">
-                <div className="flex-1">
-                  <label className="so-label">Item Name *</label>
-                  <input className="so-input w-full" value={form.name} onChange={e => f('name', e.target.value)} placeholder="e.g. Basmati Rice" />
-                </div>
-                <div className="pt-5 flex items-center gap-2">
-                  <input type="checkbox" id="itemActive" checked={form.isActive} onChange={e => f('isActive', e.target.checked)} className="w-4 h-4 accent-[#1e88e5]" />
-                  <label htmlFor="itemActive" className="text-xs text-[#555] cursor-pointer whitespace-nowrap">Activate Item</label>
-                </div>
+              {/* Item Name */}
+              <div>
+                <label className="so-label">Item Name *</label>
+                <input className="so-input w-full" value={form.name} onChange={e => f('name', e.target.value)} placeholder="e.g. Basmati Rice" />
               </div>
 
               {/* Unit + Sell Price */}
@@ -454,6 +461,25 @@ export default function Items() {
           </Section>
 
           {/* ── PRICE DETAILS ── */}
+          <Section title="Item Settings" open={sections.settings} onToggle={() => tog('settings')}>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="so-label">Select Status</label>
+                <select className="so-input w-full" value={form.isActive ? 'active' : 'inactive'} onChange={e => f('isActive', e.target.value === 'active')}>
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                </select>
+              </div>
+              <div>
+                <label className="so-label">Select Warehouse</label>
+                <select className="so-input w-full" value={form.warehouse || 'Main'} onChange={e => f('warehouse', e.target.value)}>
+                  <option value="Main">Main Warehouse</option>
+                  {warehouses.map(w => <option key={w._id} value={w.name}>{w.name}</option>)}
+                </select>
+              </div>
+            </div>
+          </Section>
+
           <Section title="Price Details" open={sections.price} onToggle={() => tog('price')}>
             <div className="space-y-3">
               <div className="grid grid-cols-2 gap-3">

@@ -3,10 +3,12 @@ import mongoose from 'mongoose';
 const warehouseSchema = new mongoose.Schema({
   name: { type: String, required: true },
   code: { type: String, unique: true, sparse: true },
+  type: { type: String, enum: ['primary', 'secondary', 'transit', 'retail', 'virtual'], default: 'primary' },
+  gstin: String,
   address: {
-    street: String,
+    street: { type: String, required: true },
     city: String,
-    state: String,
+    state: { type: String, required: true },
     pincode: String,
   },
   manager: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },

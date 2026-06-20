@@ -11,26 +11,49 @@ const router = Router();
 // ─── ITEMS (Products) ───────────────────────────────────────────
 router.get('/items', protect, async (req, res) => {
   try {
-    const { search, category } = req.query;
+    const { search, category, status, warehouse } = req.query;
     const filter = {};
     if (search) filter.$or = [{ name: new RegExp(search, 'i') }, { sku: new RegExp(search, 'i') }];
     if (category) filter.category = category;
-    const items = await Product.find(filter).sort('-createdAt');
-    res.json(items);
+    if (status === 'active') filter.isActive = true;
+    if (status === 'inactive') filter.isActive = false;
+    const items = await Product.find(filter).sort('-createdAt').lean();
+    if (!warehouse) return res.json(items);
+
+    const stock = await Inventory.find({ warehouse }).lean();
+    const stockByProduct = new Map(stock.map((row) => [row.product.toString(), row]));
+    res.json(items.map((item) => {
+      const inv = stockByProduct.get(item._id.toString());
+      return {
+        ...item,
+        selectedWarehouse: warehouse,
+        stock: inv?.quantity ?? 0,
+        availableQty: inv?.availableQty ?? 0,
+        reservedQty: inv?.reservedQty ?? 0,
+      };
+    }));
   } catch (e) { res.status(500).json({ message: e.message }); }
 });
 
 router.post('/items', protect, async (req, res) => {
   try {
     const item = await Product.create(req.body);
-    await Inventory.create({ product: item._id, quantity: req.body.openingStock || 0, availableQty: req.body.openingStock || 0, warehouse: 'Main' });
+    const warehouse = req.body.warehouse || 'Main';
+    await Inventory.create({ product: item._id, quantity: req.body.openingStock || 0, availableQty: req.body.openingStock || 0, warehouse });
     res.status(201).json(item);
   } catch (e) { res.status(500).json({ message: e.message }); }
 });
 
 router.put('/items/:id', protect, async (req, res) => {
   try {
-    const item = await Product.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    const item = await Product.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
+    if (req.body.warehouse && req.body.stock !== undefined) {
+      await Inventory.findOneAndUpdate(
+        { product: item._id, warehouse: req.body.warehouse },
+        { quantity: Number(req.body.stock) || 0, availableQty: Number(req.body.stock) || 0 },
+        { upsert: true }
+      );
+    }
     res.json(item);
   } catch (e) { res.status(500).json({ message: e.message }); }
 });
@@ -71,7 +94,10 @@ router.post('/items/:id/adjust-stock', protect, async (req, res) => {
 // ─── WAREHOUSES ─────────────────────────────────────────────────
 router.get('/warehouses', protect, async (req, res) => {
   try {
-    const warehouses = await Warehouse.find({ isActive: true }).populate('manager', 'name email').sort('name');
+    const filter = {};
+    if (req.query.status === 'active') filter.isActive = true;
+    if (req.query.status === 'inactive') filter.isActive = false;
+    const warehouses = await Warehouse.find(filter).populate('manager', 'name email').sort('name');
     // Attach stock summary for each warehouse
     const result = await Promise.all(warehouses.map(async (wh) => {
       const stockCount = await Inventory.countDocuments({ warehouse: wh.name });
@@ -94,8 +120,42 @@ router.post('/warehouses', protect, async (req, res) => {
 
 router.put('/warehouses/:id', protect, async (req, res) => {
   try {
-    const wh = await Warehouse.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    const wh = await Warehouse.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
     res.json(wh);
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+router.post('/warehouses/import', protect, async (req, res) => {
+  try {
+    const rows = Array.isArray(req.body.rows) ? req.body.rows : [];
+    if (!rows.length) return res.status(400).json({ message: 'No warehouse rows found' });
+    let imported = 0;
+    for (const row of rows) {
+      if (!row.name || !row.address?.street || !row.address?.state) continue;
+      const payload = {
+        name: row.name,
+        code: row.code || undefined,
+        type: row.type || 'primary',
+        gstin: row.gstin || '',
+        address: {
+          street: row.address.street,
+          city: row.address.city || '',
+          state: row.address.state,
+          pincode: row.address.pincode || '',
+        },
+        phone: row.phone || '',
+        email: row.email || '',
+        isActive: row.isActive !== false,
+        notes: row.notes || '',
+      };
+      if (payload.code) {
+        await Warehouse.findOneAndUpdate({ code: payload.code }, payload, { upsert: true, runValidators: true, new: true });
+      } else {
+        await Warehouse.create(payload);
+      }
+      imported += 1;
+    }
+    res.json({ imported });
   } catch (e) { res.status(500).json({ message: e.message }); }
 });
 
@@ -131,8 +191,40 @@ router.post('/price-lists', protect, async (req, res) => {
 
 router.put('/price-lists/:id', protect, async (req, res) => {
   try {
-    const list = await PriceList.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    const list = await PriceList.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
     res.json(list);
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+router.post('/price-lists/import', protect, async (req, res) => {
+  try {
+    const rows = Array.isArray(req.body.rows) ? req.body.rows : [];
+    if (!rows.length) return res.status(400).json({ message: 'No price list rows found' });
+    let imported = 0;
+    for (const row of rows) {
+      if (!row.name) continue;
+      const payload = {
+        name: row.name,
+        code: row.code || undefined,
+        applicableTo: row.applicableTo || 'all',
+        pricingType: row.pricingType || 'fixed',
+        markupPercent: Number(row.markupPercent || 0),
+        markdownPercent: Number(row.markdownPercent || 0),
+        fixedAmount: Number(row.fixedAmount || 0),
+        isActive: row.isActive !== false,
+        validFrom: row.validFrom || undefined,
+        validTo: row.validTo || undefined,
+        notes: row.notes || '',
+        items: row.items || [],
+      };
+      if (payload.code) {
+        await PriceList.findOneAndUpdate({ code: payload.code }, payload, { upsert: true, runValidators: true, new: true });
+      } else {
+        await PriceList.create(payload);
+      }
+      imported += 1;
+    }
+    res.json({ imported });
   } catch (e) { res.status(500).json({ message: e.message }); }
 });
 
