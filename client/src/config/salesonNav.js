@@ -63,6 +63,8 @@ export const SALESON_NAV_DEF = [
     items: [
       { path: '/app/sales/estimates',         moduleId: 'sales-estimates', label: 'Estimates' },
       { path: '/app/sales/orders',            moduleId: 'sales-orders',    label: 'Sales Orders' },
+      { path: '/app/production/production-orders', moduleId: 'production', label: 'Production' },
+      { path: '/app/reports',                  moduleId: 'reports',         label: 'Report' },
       { path: '/app/sales/invoices',          moduleId: 'sales-invoices',  label: 'Sales Invoices' },
       { path: '/app/sales/delivery-challans', moduleId: 'sales-delivery',  label: 'Delivery Challans' },
       { path: '/app/sales/returns',           moduleId: 'sales-returns',   label: 'Sales Returns' },

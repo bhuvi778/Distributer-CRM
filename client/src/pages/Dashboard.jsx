@@ -8,6 +8,7 @@ import {
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import api from '../api/axios';
 import { useAuth } from '../context/AuthContext';
+import useMasterData from '../hooks/useMasterData';
 import { formatCurrency } from '../utils/helpers';
 
 // ── Date helpers ─────────────────────────────────────────────────
@@ -67,6 +68,87 @@ function DateFilter({ from, to, onChange }) {
       <span className="text-[#9e9e9e]">—</span>
       <input type="date" value={to} onChange={e => onChange(from, e.target.value)}
         className="border border-[#e0e0e0] rounded px-2 py-1.5 text-xs text-[#333] bg-white" />
+    </div>
+  );
+}
+
+function InvoiceDashboardPanel({ users, selectedUser, onUserChange, invoices, loading }) {
+  const totalAmount = invoices.reduce((sum, inv) => sum + (Number(inv.grandTotal) || 0), 0);
+  const totalPaid = invoices.reduce((sum, inv) => sum + (Number(inv.paidAmount) || 0), 0);
+  const totalDue = invoices.reduce((sum, inv) => sum + (Number(inv.balanceDue) || 0), 0);
+  const selectableUsers = users.filter((u) => ['admin', 'manager', 'sales_rep', 'sales_executive', 'accountant'].includes(u.role));
+
+  return (
+    <div className="bg-white border border-[#e0e0e0] rounded-lg overflow-hidden mb-4">
+      <div className="px-4 py-3 border-b border-[#e0e0e0] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+        <div>
+          <p className="text-sm font-semibold text-[#333]">Invoice</p>
+          <p className="text-xs text-[#9e9e9e]">User-wise invoice summary and recent invoices</p>
+        </div>
+        <select value={selectedUser} onChange={(e) => onUserChange(e.target.value)} className="so-input w-56 text-xs">
+          <option value="">Select User</option>
+          {selectableUsers.map((u) => <option key={u._id} value={u._id}>{u.name} ({u.role.replace('_', ' ')})</option>)}
+        </select>
+      </div>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 p-4 border-b border-[#f0f0f0]">
+        <DashCard label="Invoices" value={loading ? '...' : invoices.length} icon={FileText} bg="#1e88e5" />
+        <DashCard label="Invoice Amount" value={loading ? '...' : formatCurrency(totalAmount)} icon={IndianRupee} bg="#43a047" />
+        <DashCard label="Paid" value={loading ? '...' : formatCurrency(totalPaid)} icon={CreditCard} bg="#00897b" />
+        <DashCard label="Balance" value={loading ? '...' : formatCurrency(totalDue)} icon={AlertCircle} bg="#e53935" />
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead className="bg-[#f8f9fa]">
+            <tr>
+              <th className="table-header">Invoice #</th>
+              <th className="table-header">Party</th>
+              <th className="table-header">User</th>
+              <th className="table-header">Date</th>
+              <th className="table-header">Total</th>
+              <th className="table-header">Balance</th>
+              <th className="table-header">Status</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-[#f5f5f5]">
+            {loading && <tr><td colSpan={7} className="table-cell text-center py-6 text-[#9e9e9e]">Loading invoices...</td></tr>}
+            {!loading && invoices.length === 0 && <tr><td colSpan={7} className="table-cell text-center py-6 text-[#9e9e9e]">No invoices found</td></tr>}
+            {!loading && invoices.slice(0, 8).map((inv) => (
+              <tr key={inv._id}>
+                <td className="table-cell font-mono text-[#1e88e5]">{inv.invoiceNumber}</td>
+                <td className="table-cell">{inv.outlet?.name || '-'}</td>
+                <td className="table-cell">{inv.salesRep?.name || '-'}</td>
+                <td className="table-cell">{inv.invoiceDate ? new Date(inv.invoiceDate).toLocaleDateString('en-IN') : '-'}</td>
+                <td className="table-cell font-medium">{formatCurrency(inv.grandTotal || 0)}</td>
+                <td className={`table-cell ${inv.balanceDue > 0 ? 'text-[#e53935] font-medium' : ''}`}>{formatCurrency(inv.balanceDue || 0)}</td>
+                <td className="table-cell"><span className="so-badge so-badge-info">{inv.status || 'draft'}</span></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function QuickCreateStrip() {
+  const actions = [
+    { label: 'Sales Order', path: '/app/sales/orders', icon: ShoppingCart },
+    { label: 'Invoice', path: '/app/sales/invoices', icon: FileText },
+    { label: 'Payment', path: '/app/payments/in', icon: CreditCard },
+    { label: 'Customer', path: '/app/parties/customers', icon: Users },
+    { label: 'Production', path: '/app/production/production-orders', icon: Factory },
+    { label: 'Report', path: '/app/reports', icon: BarChart3 },
+  ];
+  return (
+    <div className="bg-white border border-[#e0e0e0] rounded-lg p-3 mb-4">
+      <p className="text-xs font-semibold text-[#555] mb-2">Quick Create</p>
+      <div className="flex flex-wrap gap-2">
+        {actions.map(({ label, path, icon: Icon }, idx) => (
+          <Link key={path} to={path} className={`${idx === 0 ? 'so-btn-primary' : 'so-btn-secondary'} flex items-center gap-1.5 text-xs`}>
+            <Icon size={13} /> {label}
+          </Link>
+        ))}
+      </div>
     </div>
   );
 }
@@ -322,12 +404,16 @@ function DistributorDashboard({ stats }) {
 // ─────────────────────────────────────────────────────────────────
 export default function Dashboard() {
   const { user } = useAuth();
+  const { users } = useMasterData();
   const role = user?.role;
 
   const [dateFrom, setDateFrom] = useState(startOfMonth);
   const [dateTo, setDateTo]   = useState(today);
   const [stats, setStats]       = useState(null);
   const [chartData, setChartData] = useState([]);
+  const [invoiceUser, setInvoiceUser] = useState('');
+  const [invoiceRows, setInvoiceRows] = useState([]);
+  const [invoiceLoading, setInvoiceLoading] = useState(false);
 
   const loadStats = useCallback(() => {
     api.get('/dashboard/stats', { params: { from: dateFrom, to: dateTo } })
@@ -343,6 +429,22 @@ export default function Dashboard() {
   }, [dateFrom, dateTo, role]);
 
   useEffect(() => { loadStats(); }, [loadStats]);
+
+  useEffect(() => {
+    setInvoiceLoading(true);
+    api.get('/invoices', { params: { type: 'sales', salesRep: invoiceUser || undefined } })
+      .then((r) => {
+        const from = new Date(dateFrom);
+        const to = new Date(dateTo);
+        to.setHours(23, 59, 59, 999);
+        setInvoiceRows((Array.isArray(r.data) ? r.data : []).filter((inv) => {
+          const date = inv.invoiceDate ? new Date(inv.invoiceDate) : new Date(inv.createdAt);
+          return inv.type === 'sales' && date >= from && date <= to;
+        }));
+      })
+      .catch(console.error)
+      .finally(() => setInvoiceLoading(false));
+  }, [invoiceUser, dateFrom, dateTo]);
 
   if (!stats) {
     return (
@@ -366,6 +468,16 @@ export default function Dashboard() {
         </div>
         <DateFilter from={dateFrom} to={dateTo} onChange={(f, t) => { setDateFrom(f); setDateTo(t); }} />
       </div>
+
+      <QuickCreateStrip />
+
+      <InvoiceDashboardPanel
+        users={users}
+        selectedUser={invoiceUser}
+        onUserChange={setInvoiceUser}
+        invoices={invoiceRows}
+        loading={invoiceLoading}
+      />
 
       {/* Role-based dashboard */}
       {['super_admin', 'admin', 'manager'].includes(role) && (

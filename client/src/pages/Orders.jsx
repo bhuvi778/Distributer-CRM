@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Search, Edit2, Trash2, Eye } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Search, Edit2, Trash2, Eye, Factory, BarChart3 } from 'lucide-react';
 import api from '../api/axios';
 import { useAuth } from '../context/AuthContext';
 import useMasterData, { invalidateMasterData } from '../hooks/useMasterData';
@@ -159,6 +160,15 @@ export default function Orders() {
         loading={loading}
         addLabel="New Sales Order"
       />
+
+      <div className="flex flex-wrap gap-2 mb-4">
+        <Link to="/app/production/production-orders" className="so-btn-secondary flex items-center gap-1.5 text-xs">
+          <Factory size={13} /> Production
+        </Link>
+        <Link to="/app/reports" className="so-btn-secondary flex items-center gap-1.5 text-xs">
+          <BarChart3 size={13} /> Report
+        </Link>
+      </div>
 
       <div className="glass-card overflow-hidden">
         <div className="p-4 border-b border-surface-100">

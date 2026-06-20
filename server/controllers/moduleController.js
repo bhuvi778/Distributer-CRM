@@ -195,13 +195,22 @@ export const trackLocation = async (req, res) => {
 
 export const getLiveLocations = async (req, res) => {
   try {
-    if (!['admin', 'manager', 'sales_executive'].includes(req.user.role) && !req.user.permissions?.includes('view_all_tracking')) {
-      const self = await User.findById(req.user._id).select('name email lastLocation assignedRoutes territory');
-      return res.json(self?.lastLocation ? [self] : []);
+    const withStatus = (rep) => {
+      const doc = rep.toObject ? rep.toObject() : rep;
+      const updatedAt = doc.lastLocation?.updatedAt ? new Date(doc.lastLocation.updatedAt) : null;
+      const minutes = updatedAt ? (Date.now() - updatedAt.getTime()) / 60000 : Infinity;
+      const trackingStatus = minutes <= 15 ? 'live' : minutes <= 480 ? 'active' : 'offline';
+      return { ...doc, trackingStatus };
+    };
+
+    if (!['super_admin', 'admin', 'manager', 'sales_executive'].includes(req.user.role) && !req.user.permissions?.includes('view_all_tracking')) {
+      const self = await User.findById(req.user._id).select('name email role lastLocation assignedRoutes territory');
+      return res.json(self ? [withStatus(self)] : []);
     }
-    const reps = await User.find({ role: { $in: ['sales_rep', 'sales_executive'] }, isActive: true, 'lastLocation.lat': { $exists: true } })
-      .select('name email lastLocation assignedRoutes territory');
-    res.json(reps);
+    const reps = await User.find({ role: { $in: ['sales_rep', 'sales_executive'] }, isActive: true })
+      .select('name email role lastLocation assignedRoutes territory')
+      .sort('name');
+    res.json(reps.map(withStatus));
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
