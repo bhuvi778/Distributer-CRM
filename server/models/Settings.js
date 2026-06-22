@@ -8,8 +8,21 @@ const settingsSchema = new mongoose.Schema({
   phone: String,
   email: String,
   logo: String,
+  signature: String,
+  qrCode: String,
+  stateOfSupply: String,
+  businessType: { type: String, default: 'MANUFACTURER' },
+  timezone: String,
   currency: { type: String, default: 'INR' },
   fiscalYearStart: { type: String, default: '04-01' },
+  officeHours: {
+    type: mongoose.Schema.Types.Mixed,
+    default: {},
+  },
+  bankDetails: {
+    type: mongoose.Schema.Types.Mixed,
+    default: {},
+  },
   defaultGstRate: { type: Number, default: 18 },
   taxRates: [{
     name: String,
@@ -58,6 +71,18 @@ const settingsSchema = new mongoose.Schema({
       whatsapp: { type: Boolean, default: true },
       email: { type: Boolean, default: true },
     },
+  },
+  mobileAppSettings: {
+    type: mongoose.Schema.Types.Mixed,
+    default: {},
+  },
+  templateSettings: {
+    type: mongoose.Schema.Types.Mixed,
+    default: {},
+  },
+  notificationSettings: {
+    type: mongoose.Schema.Types.Mixed,
+    default: {},
   },
   whatsappEnabled: { type: Boolean, default: false },
   roles: mongoose.Schema.Types.Mixed,
