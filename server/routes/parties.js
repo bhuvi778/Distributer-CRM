@@ -2,8 +2,46 @@ import { Router } from 'express';
 import { protect } from '../middleware/auth.js';
 import Party from '../models/Party.js';
 import PartyGroup from '../models/PartyGroup.js';
+import Settings from '../models/Settings.js';
 
 const router = Router();
+
+const PARTY_SETTING_DEFAULTS = {
+  route: true,
+  status: true,
+  creditBillLimit: true,
+  sequence: false,
+  erpId: false,
+  mobileMandatory: false,
+  customFields: [],
+};
+
+const VISIT_SETTING_DEFAULTS = {
+  photoMandatory: false,
+  scheduleVisit: false,
+  commentOptions: 'Shop Closed, Already have stock',
+  customFields: [],
+};
+
+const normalizeSettings = (type, value = {}) => {
+  const defaults = type === 'visited' ? VISIT_SETTING_DEFAULTS : PARTY_SETTING_DEFAULTS;
+  const customFields = Array.isArray(value.customFields)
+    ? value.customFields
+      .map((field) => ({
+        label: String(field.label || '').trim(),
+        enabled: field.enabled !== false,
+      }))
+      .filter((field, index, fields) => (
+        field.label && fields.findIndex((item) => item.label.toLowerCase() === field.label.toLowerCase()) === index
+      ))
+    : [];
+
+  return {
+    ...defaults,
+    ...value,
+    customFields,
+  };
+};
 
 // GET all with filters
 router.get('/', protect, async (req, res) => {
@@ -36,6 +74,29 @@ router.get('/groups', protect, async (req, res) => {
       .filter((name) => name && !savedNames.has(name))
       .map((name) => ({ _id: `legacy-${name}`, name, isLegacy: true }));
     res.json([...savedGroups, ...legacyGroups]);
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+router.get('/settings/:type', protect, async (req, res) => {
+  try {
+    let settings = await Settings.findOne();
+    if (!settings) settings = await Settings.create({});
+    const type = req.params.type || 'customer';
+    res.json(normalizeSettings(type, settings.partySettings?.[type]));
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+router.put('/settings/:type', protect, async (req, res) => {
+  try {
+    let settings = await Settings.findOne();
+    if (!settings) settings = await Settings.create({});
+    const type = req.params.type || 'customer';
+    const current = settings.partySettings || {};
+    const next = normalizeSettings(type, req.body || {});
+    settings.partySettings = { ...current, [type]: next };
+    settings.markModified('partySettings');
+    await settings.save();
+    res.json(next);
   } catch (e) { res.status(500).json({ message: e.message }); }
 });
 

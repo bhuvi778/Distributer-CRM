@@ -62,6 +62,10 @@ const settingsSchema = new mongoose.Schema({
   whatsappEnabled: { type: Boolean, default: false },
   roles: mongoose.Schema.Types.Mixed,
   rights: mongoose.Schema.Types.Mixed,
+  partySettings: {
+    type: mongoose.Schema.Types.Mixed,
+    default: {},
+  },
   defaultTransactionState: { type: String, default: 'draft' },
 }, { timestamps: true });
 

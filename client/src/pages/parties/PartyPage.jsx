@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { ChevronLeft, ChevronRight, Download, Edit2, MapPin, Plus, Search, Settings, Upload } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Download, Edit2, MapPin, Plus, Search, Settings, Upload, X } from 'lucide-react';
 import api from '../../api/axios';
 import SlidePanel from '../../components/common/SlidePanel';
 import { exportToExcel } from '../../utils/exportExcel';
 import useIndiaLocations from '../../hooks/useIndiaLocations';
+import useMasterData from '../../hooks/useMasterData';
 
 const PAGE_SIZE = 30;
 const TITLE_BY_TYPE = {
@@ -30,9 +31,30 @@ const emptyForm = (type) => ({
   shippingAddress: emptyAddress(),
   geoLocation: { lat: '', lng: '' },
   creditLimit: 0,
+  creditBillLimit: 0,
+  sequence: 0,
+  ekycId: '',
   notes: '',
   isActive: true,
+  customFields: [],
 });
+
+const PARTY_SETTINGS_DEFAULTS = {
+  route: true,
+  status: true,
+  creditBillLimit: true,
+  sequence: false,
+  erpId: false,
+  mobileMandatory: false,
+  customFields: [],
+};
+
+const VISIT_SETTINGS_DEFAULTS = {
+  photoMandatory: false,
+  scheduleVisit: false,
+  commentOptions: 'Shop Closed, Already have stock',
+  customFields: [],
+};
 
 const EXPORT_COLS = [
   { key: 'name', label: 'Name', accessor: 'name' },
@@ -58,8 +80,109 @@ const normalize = (party, type) => ({
   billingAddress: party.billingAddress || party.address || emptyAddress(),
   shippingAddress: party.shippingAddress || party.address || emptyAddress(),
   geoLocation: party.geoLocation || { lat: '', lng: '' },
+  route: party.route?._id || party.route || '',
   status: party.status || (party.isActive === false ? 'inactive' : 'active'),
 });
+
+function SettingsSwitch({ checked, onChange }) {
+  return (
+    <button
+      type="button"
+      onClick={() => onChange(!checked)}
+      className={`so-settings-switch ${checked ? 'so-settings-switch-on' : ''}`}
+      aria-pressed={checked}
+    />
+  );
+}
+
+function SettingsRow({ label, checked, onChange }) {
+  return (
+    <div className="so-settings-row">
+      <span>{label}</span>
+      <SettingsSwitch checked={checked} onChange={onChange} />
+    </div>
+  );
+}
+
+function PartySettingsModal({
+  isVisited,
+  settings,
+  setSetting,
+  newCustomField,
+  setNewCustomField,
+  addCustomField,
+  toggleCustomField,
+  onClose,
+  onSave,
+}) {
+  const title = isVisited ? 'Visit Settings' : 'Party Settings';
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/45" onClick={onClose} />
+      <div className="relative w-[min(624px,calc(100vw-32px))] bg-white rounded-[3px] border border-[#d7dce5] shadow-2xl">
+        <div className="h-[68px] flex items-center justify-between px-5 border-b border-[#eceff4]">
+          <h2 className="text-xl font-semibold text-[#202733]">{title}</h2>
+          <button type="button" onClick={onClose} className="text-[#777] hover:text-[#111]">
+            <X size={22} strokeWidth={3} />
+          </button>
+        </div>
+
+        <div className="px-8 py-4">
+          {isVisited ? (
+            <>
+              <SettingsRow label="Photo Mandatory" checked={!!settings.photoMandatory} onChange={(value) => setSetting('photoMandatory', value)} />
+              <SettingsRow label="Schedule Visit" checked={!!settings.scheduleVisit} onChange={(value) => setSetting('scheduleVisit', value)} />
+              <div className="so-settings-comment-row">
+                <label>Comment Options :</label>
+                <textarea
+                  className="so-input w-full min-h-[56px]"
+                  value={settings.commentOptions || ''}
+                  onChange={(event) => setSetting('commentOptions', event.target.value)}
+                />
+              </div>
+            </>
+          ) : (
+            <>
+              <SettingsRow label="Route" checked={!!settings.route} onChange={(value) => setSetting('route', value)} />
+              <SettingsRow label="Status" checked={!!settings.status} onChange={(value) => setSetting('status', value)} />
+              <SettingsRow label="Credit Bill Limit" checked={!!settings.creditBillLimit} onChange={(value) => setSetting('creditBillLimit', value)} />
+              <SettingsRow label="Sequence" checked={!!settings.sequence} onChange={(value) => setSetting('sequence', value)} />
+              <SettingsRow label="ERP Id" checked={!!settings.erpId} onChange={(value) => setSetting('erpId', value)} />
+              <SettingsRow label="Mobile Mandatory" checked={!!settings.mobileMandatory} onChange={(value) => setSetting('mobileMandatory', value)} />
+            </>
+          )}
+
+          {(settings.customFields || []).map((field, index) => (
+            <SettingsRow
+              key={`${field.label}-${index}`}
+              label={field.label}
+              checked={field.enabled !== false}
+              onChange={() => toggleCustomField(index)}
+            />
+          ))}
+
+          <div className="py-4 border-t border-[#eceff4]">
+            <div className="flex items-center justify-center gap-2">
+              <input
+                className="so-input w-[220px]"
+                value={newCustomField}
+                onChange={(event) => setNewCustomField(event.target.value)}
+                placeholder="Custom field name"
+                onKeyDown={(event) => { if (event.key === 'Enter') addCustomField(); }}
+              />
+              <button type="button" onClick={addCustomField} className="text-[#0057d8] text-base">+ Add custom field</button>
+            </div>
+          </div>
+        </div>
+
+        <div className="h-[66px] px-5 border-t border-[#d7dce5] bg-[#fafafa] flex items-center justify-end gap-2">
+          <button type="button" onClick={onClose} className="h-[34px] min-w-[122px] rounded-[3px] border border-[#667085] bg-white text-[#667085] text-base">Cancel</button>
+          <button type="button" onClick={onSave} className="h-[34px] min-w-[104px] rounded-[3px] bg-[#174bb8] text-white text-base font-semibold">Save</button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function PartyPage({ type, title }) {
   const pageTitle = title || TITLE_BY_TYPE[type] || 'Party';
@@ -68,15 +191,20 @@ export default function PartyPage({ type, title }) {
   const [groups, setGroups] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [groupFilter, setGroupFilter] = useState('');
   const [visitedBy, setVisitedBy] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [dateRange] = useState('22/06/2026 - 22/06/2026');
   const [page, setPage] = useState(1);
   const [panelOpen, setPanelOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [partySettings, setPartySettings] = useState(isVisited ? VISIT_SETTINGS_DEFAULTS : PARTY_SETTINGS_DEFAULTS);
+  const [newCustomField, setNewCustomField] = useState('');
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(emptyForm(type));
   const importRef = useRef(null);
   const { states, cities, loadingCities } = useIndiaLocations(form.address?.state);
+  const { routes } = useMasterData();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -92,16 +220,27 @@ export default function PartyPage({ type, title }) {
     }
   }, [type, search]);
 
+  const loadSettings = useCallback(async () => {
+    try {
+      const { data } = await api.get(`/parties/settings/${type}`);
+      setPartySettings({ ...(isVisited ? VISIT_SETTINGS_DEFAULTS : PARTY_SETTINGS_DEFAULTS), ...(data || {}) });
+    } catch {
+      setPartySettings(isVisited ? VISIT_SETTINGS_DEFAULTS : PARTY_SETTINGS_DEFAULTS);
+    }
+  }, [type, isVisited]);
+
   useEffect(() => { load(); }, [load]);
-  useEffect(() => { setPage(1); }, [search, visitedBy, statusFilter]);
+  useEffect(() => { loadSettings(); }, [loadSettings]);
+  useEffect(() => { setPage(1); }, [search, groupFilter, visitedBy, statusFilter]);
 
   const filtered = useMemo(() => {
     return parties.filter((party) => {
       const matchesStatus = !statusFilter || party.status === statusFilter || (statusFilter === 'active' && party.isActive !== false);
       const matchesVisited = !visitedBy || party.assignedTo?.name === visitedBy;
-      return matchesStatus && matchesVisited;
+      const matchesGroup = !groupFilter || party.group === groupFilter;
+      return matchesStatus && matchesVisited && matchesGroup;
     });
-  }, [parties, statusFilter, visitedBy]);
+  }, [parties, statusFilter, visitedBy, groupFilter]);
 
   const displayed = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
@@ -118,6 +257,17 @@ export default function PartyPage({ type, title }) {
     address: { ...(prev.address || emptyAddress()), state, city: '' },
     billingAddress: { ...(prev.billingAddress || emptyAddress()), state, city: '' },
   }));
+  const setFormCustomField = (label, value) => setForm((prev) => {
+    const existing = Array.isArray(prev.customFields) ? prev.customFields : [];
+    const found = existing.some((field) => field.name === label);
+    return {
+      ...prev,
+      customFields: found
+        ? existing.map((field) => (field.name === label ? { ...field, value } : field))
+        : [...existing, { name: label, value }],
+    };
+  });
+  const getFormCustomField = (label) => (form.customFields || []).find((field) => field.name === label)?.value || '';
 
   const openAdd = () => {
     setEditing(null);
@@ -133,11 +283,13 @@ export default function PartyPage({ type, title }) {
 
   const save = async () => {
     if (!form.name.trim()) return alert('Name is required');
+    if (!isVisited && partySettings.mobileMandatory && !form.phone.trim()) return alert('Mobile is mandatory');
     const payload = {
       ...form,
       type,
       isActive: form.status !== 'inactive',
       billingAddress: form.address,
+      customFields: (form.customFields || []).filter((field) => field.name || field.value),
     };
     try {
       if (editing) await api.put(`/parties/${editing._id}`, payload);
@@ -146,6 +298,42 @@ export default function PartyPage({ type, title }) {
       load();
     } catch (e) {
       alert(e.response?.data?.message || 'Error saving party');
+    }
+  };
+
+  const openSettings = () => {
+    setNewCustomField('');
+    setSettingsOpen(true);
+  };
+
+  const setting = (key, value) => setPartySettings((prev) => ({ ...prev, [key]: value }));
+
+  const addCustomField = () => {
+    const label = newCustomField.trim();
+    if (!label) return;
+    setPartySettings((prev) => ({
+      ...prev,
+      customFields: (prev.customFields || []).some((field) => field.label?.toLowerCase() === label.toLowerCase())
+        ? prev.customFields
+        : [...(prev.customFields || []), { label, enabled: true }],
+    }));
+    setNewCustomField('');
+  };
+
+  const toggleCustomField = (index) => setPartySettings((prev) => ({
+    ...prev,
+    customFields: (prev.customFields || []).map((field, idx) => (
+      idx === index ? { ...field, enabled: field.enabled === false } : field
+    )),
+  }));
+
+  const saveSettings = async () => {
+    try {
+      const { data } = await api.put(`/parties/settings/${type}`, partySettings);
+      setPartySettings({ ...(isVisited ? VISIT_SETTINGS_DEFAULTS : PARTY_SETTINGS_DEFAULTS), ...(data || {}) });
+      setSettingsOpen(false);
+    } catch (e) {
+      alert(e.response?.data?.message || 'Error saving settings');
     }
   };
 
@@ -160,11 +348,11 @@ export default function PartyPage({ type, title }) {
         <h1 className="so-title">{pageTitle}</h1>
         <div className="so-actions">
           {isVisited ? (
-            <button type="button" className="so-icon-btn !w-[46px] !h-9" title="Settings"><Settings size={18} /></button>
+            <button type="button" onClick={openSettings} className="so-icon-btn !w-[46px] !h-9" title="Settings"><Settings size={18} /></button>
           ) : (
             <>
               <button type="button" className="so-icon-btn !w-[58px] !h-9 border-[#174bb8] text-[#174bb8]" title="Map"><MapPin size={20} /></button>
-              <button type="button" className="so-icon-btn !w-[58px] !h-9" title="Settings"><Settings size={18} /></button>
+              <button type="button" onClick={openSettings} className="so-icon-btn !w-[58px] !h-9" title="Settings"><Settings size={18} /></button>
               <button type="button" onClick={() => exportToExcel(filtered, `${type}_parties`, EXPORT_COLS)} className="so-btn-secondary text-sm"><Download size={15} /> Export</button>
               <button type="button" onClick={() => importRef.current?.click()} className="so-btn-secondary border-[#174bb8] text-[#174bb8] text-sm"><Upload size={15} /> Import</button>
               <button type="button" onClick={openAdd} className="so-btn-primary text-sm"><Plus size={15} /> New</button>
@@ -195,7 +383,15 @@ export default function PartyPage({ type, title }) {
             </select>
           </>
         )}
-        {!isVisited && <div className="flex-1" />}
+        {!isVisited && (
+          <>
+            <div className="flex-1" />
+            <select className="so-input so-select w-[190px]" value={groupFilter} onChange={(event) => setGroupFilter(event.target.value)}>
+              <option value="">Select Group</option>
+              {groups.map((group) => <option key={group._id || group.name} value={group.name}>{group.name}</option>)}
+            </select>
+          </>
+        )}
         <div className="ml-auto flex items-center gap-2 text-sm text-[#111827]">
           <span>{displayRange(filtered.length, page)}</span>
           <button type="button" onClick={() => setPage((value) => Math.max(1, value - 1))} disabled={page === 1} className="so-icon-btn !w-10 !h-9 text-[#174bb8] disabled:opacity-40"><ChevronLeft size={14} /></button>
@@ -261,7 +457,7 @@ export default function PartyPage({ type, title }) {
               <input className="so-input w-full" value={form.name} onChange={(event) => f('name', event.target.value)} />
             </div>
             <div>
-              <label className="so-label">Mobile</label>
+              <label className="so-label">Mobile{partySettings.mobileMandatory ? ' *' : ''}</label>
               <input className="so-input w-full" value={form.phone || ''} onChange={(event) => f('phone', event.target.value)} />
             </div>
             <div>
@@ -279,14 +475,25 @@ export default function PartyPage({ type, title }) {
                 {groups.map((group) => <option key={group._id || group.name} value={group.name}>{group.name}</option>)}
               </select>
             </div>
-            <div>
-              <label className="so-label">Status</label>
-              <select className="so-input so-select w-full" value={form.status || 'active'} onChange={(event) => f('status', event.target.value)}>
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-                <option value="blocked">Blocked</option>
-              </select>
-            </div>
+            {partySettings.route && (
+              <div>
+                <label className="so-label">Route</label>
+                <select className="so-input so-select w-full" value={form.route || ''} onChange={(event) => f('route', event.target.value)}>
+                  <option value="">Select Route</option>
+                  {routes.map((route) => <option key={route._id} value={route._id}>{route.name}</option>)}
+                </select>
+              </div>
+            )}
+            {partySettings.status && (
+              <div>
+                <label className="so-label">Status</label>
+                <select className="so-input so-select w-full" value={form.status || 'active'} onChange={(event) => f('status', event.target.value)}>
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                  <option value="blocked">Blocked</option>
+                </select>
+              </div>
+            )}
             <div className="col-span-2">
               <label className="so-label">Address</label>
               <textarea className="so-input w-full min-h-[72px]" value={form.address?.street || ''} onChange={(event) => fa('street', event.target.value)} />
@@ -309,17 +516,51 @@ export default function PartyPage({ type, title }) {
               <label className="so-label">GSTIN</label>
               <input className="so-input w-full" value={form.gstin || ''} onChange={(event) => f('gstin', event.target.value.toUpperCase())} />
             </div>
-            <div>
-              <label className="so-label">Credit Limit</label>
-              <input type="number" className="so-input w-full" value={form.creditLimit || 0} onChange={(event) => f('creditLimit', Number(event.target.value))} />
-            </div>
+            {partySettings.creditBillLimit && (
+              <div>
+                <label className="so-label">Credit Bill Limit</label>
+                <input type="number" className="so-input w-full" value={form.creditBillLimit || 0} onChange={(event) => f('creditBillLimit', Number(event.target.value))} />
+              </div>
+            )}
+            {partySettings.sequence && (
+              <div>
+                <label className="so-label">Sequence</label>
+                <input type="number" className="so-input w-full" value={form.sequence || 0} onChange={(event) => f('sequence', Number(event.target.value))} />
+              </div>
+            )}
+            {partySettings.erpId && (
+              <div>
+                <label className="so-label">ERP Id</label>
+                <input className="so-input w-full" value={form.ekycId || ''} onChange={(event) => f('ekycId', event.target.value)} />
+              </div>
+            )}
             <div className="col-span-2">
               <label className="so-label">Notes</label>
               <textarea className="so-input w-full" rows={2} value={form.notes || ''} onChange={(event) => f('notes', event.target.value)} />
             </div>
+            {(partySettings.customFields || []).filter((field) => field.enabled !== false).map((field) => (
+              <div key={field.label}>
+                <label className="so-label">{field.label}</label>
+                <input className="so-input w-full" value={getFormCustomField(field.label)} onChange={(event) => setFormCustomField(field.label, event.target.value)} />
+              </div>
+            ))}
           </div>
         </div>
       </SlidePanel>
+
+      {settingsOpen && (
+        <PartySettingsModal
+          isVisited={isVisited}
+          settings={partySettings}
+          setSetting={setting}
+          newCustomField={newCustomField}
+          setNewCustomField={setNewCustomField}
+          addCustomField={addCustomField}
+          toggleCustomField={toggleCustomField}
+          onClose={() => setSettingsOpen(false)}
+          onSave={saveSettings}
+        />
+      )}
     </div>
   );
 }

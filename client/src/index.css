@@ -704,4 +704,58 @@
   .so-legacy-page .grid[class*="gap-"] {
     gap: 0.75rem;
   }
+
+  .so-settings-row {
+    min-height: 47px;
+    border-bottom: 1px solid #eceff4;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 24px;
+    font-size: 1.05rem;
+    color: #2b2f36;
+  }
+
+  .so-settings-comment-row {
+    border-bottom: 1px solid #eceff4;
+    padding: 10px 24px;
+    font-size: 1.05rem;
+    color: #2b2f36;
+  }
+
+  .so-settings-comment-row label {
+    display: block;
+    margin-bottom: 8px;
+  }
+
+  .so-settings-switch {
+    width: 43px;
+    height: 25px;
+    border-radius: 999px;
+    border: 1px solid #b7c0cc;
+    background: #fff;
+    padding: 2px;
+    display: inline-flex;
+    align-items: center;
+    transition: 0.15s ease;
+  }
+
+  .so-settings-switch::before {
+    content: '';
+    width: 19px;
+    height: 19px;
+    border-radius: 50%;
+    background: #aab3be;
+    transition: 0.15s ease;
+  }
+
+  .so-settings-switch-on {
+    background: #174bb8;
+    border-color: #174bb8;
+  }
+
+  .so-settings-switch-on::before {
+    background: #fff;
+    transform: translateX(18px);
+  }
 }
