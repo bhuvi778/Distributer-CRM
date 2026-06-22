@@ -46,6 +46,33 @@ const getParty = (row) => getValue(row, ['partyName', 'outlet.name', 'party.name
 const getUser = (row) => getValue(row, ['createdBy.name', 'salesRep.name', 'deliveryAgent.name', 'processedBy.name'], '-');
 const getAmount = (row) => Number(getValue(row, ['grandTotal', 'amount', 'subtotal'], 0)) || 0;
 const getDate = (row) => getValue(row, ['invoiceDate', 'orderDate', 'returnDate', 'createdAt'], null);
+const getGstin = (row) => getValue(row, ['gstin', 'outlet.gstin', 'party.gstin'], '-');
+const getDue = (row) => Number(getValue(row, ['balanceDue', 'dueAmount'], 0)) || 0;
+const getComment = (row) => getValue(row, ['comment', 'notes', 'reason'], '-');
+
+const COLUMN_DEFS = [
+  { key: 'date', label: 'Date', locked: false },
+  { key: 'transactionNo', label: 'Transaction No', locked: true },
+  { key: 'partyName', label: 'Party Name', locked: true },
+  { key: 'gstin', label: 'GSTIN', locked: false },
+  { key: 'amount', label: 'Amount', locked: false },
+  { key: 'due', label: 'Due', locked: false },
+  { key: 'comment', label: 'Comment', locked: false },
+  { key: 'createdBy', label: 'Created By', locked: false },
+  { key: 'status', label: 'Status', locked: false },
+];
+
+const DEFAULT_VISIBLE_COLUMNS = {
+  date: true,
+  transactionNo: true,
+  partyName: true,
+  gstin: false,
+  amount: true,
+  due: true,
+  comment: true,
+  createdBy: true,
+  status: true,
+};
 
 function TxSwitch({ checked, onChange }) {
   return (
@@ -186,6 +213,96 @@ function TransactionSettingsModal({
   );
 }
 
+function SalesFilterPopover({
+  activeTab,
+  setActiveTab,
+  routes,
+  warehouses,
+  groups,
+  routeFilter,
+  setRouteFilter,
+  warehouseFilter,
+  setWarehouseFilter,
+  partyGroupFilter,
+  setPartyGroupFilter,
+  draftColumns,
+  setDraftColumns,
+  onApply,
+}) {
+  const toggleColumn = (key) => {
+    const column = COLUMN_DEFS.find((item) => item.key === key);
+    if (column?.locked) return;
+    setDraftColumns((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  return (
+    <div className="absolute left-1/2 top-[calc(100%+24px)] z-40 w-[352px] -translate-x-1/2 rounded-[2px] bg-white shadow-2xl border border-[#eceff4]">
+      <div className="absolute -top-3 left-[calc(50%-11px)] h-6 w-6 rotate-45 bg-white border-l border-t border-[#eceff4]" />
+      <div className="relative p-5">
+        <div className="flex items-center gap-10 border-b border-[#eceff4]">
+          <button
+            type="button"
+            onClick={() => setActiveTab('filters')}
+            className={`h-11 text-base ${activeTab === 'filters' ? 'text-[#174bb8] border-b-2 border-[#174bb8]' : 'text-[#111827]'}`}
+          >
+            Filters
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('columns')}
+            className={`h-11 text-base ${activeTab === 'columns' ? 'text-[#174bb8] border-b-2 border-[#174bb8]' : 'text-[#111827]'}`}
+          >
+            Columns
+          </button>
+        </div>
+
+        {activeTab === 'filters' ? (
+          <div className="min-h-[348px] pt-5">
+            <label className="so-label text-base !mb-2">Route</label>
+            <select className="so-input so-select w-full mb-4" value={routeFilter} onChange={(event) => setRouteFilter(event.target.value)}>
+              <option value="">Select Route</option>
+              {routes.map((route) => <option key={route._id || route.name} value={route.name}>{route.name}</option>)}
+            </select>
+            <label className="so-label text-base !mb-2">Warehouse</label>
+            <select className="so-input so-select w-full mb-4" value={warehouseFilter} onChange={(event) => setWarehouseFilter(event.target.value)}>
+              <option value="">Select Warehouse</option>
+              {warehouses.map((warehouse) => <option key={warehouse._id || warehouse.name} value={warehouse.name}>{warehouse.name}</option>)}
+            </select>
+            <label className="so-label text-base !mb-2">Party Group</label>
+            <select className="so-input so-select w-full" value={partyGroupFilter} onChange={(event) => setPartyGroupFilter(event.target.value)}>
+              <option value="">Select Group</option>
+              {groups.map((group) => <option key={group._id || group.name} value={group.name}>{group.name}</option>)}
+            </select>
+          </div>
+        ) : (
+          <div className="min-h-[348px] pt-5">
+            <div className="space-y-3">
+              {COLUMN_DEFS.map((column) => (
+                <label key={column.key} className={`flex items-center gap-3 text-base ${column.locked ? 'text-[#b8bdc6]' : 'text-[#111827]'}`}>
+                  <input
+                    type="checkbox"
+                    checked={!!draftColumns[column.key]}
+                    disabled={column.locked}
+                    onChange={() => toggleColumn(column.key)}
+                    className="h-5 w-5 rounded border-[#d7dce5] accent-[#174bb8]"
+                  />
+                  {column.label}
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="border-t border-[#eceff4] pt-7 flex justify-end">
+          <button type="button" onClick={onApply} className="h-[38px] min-w-[72px] rounded-[3px] bg-[#174bb8] px-4 text-white text-base font-semibold">
+            Apply
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const buildExportCols = () => [
   { key: 'number', label: 'No.', renderExport: (_, row) => getTransactionNumber(row) },
   { key: 'date', label: 'Date', renderExport: (_, row) => getDate(row) ? new Date(getDate(row)).toLocaleDateString('en-IN') : '' },
@@ -211,10 +328,18 @@ export default function SalesTransactionPage({
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
   const [userFilter, setUserFilter] = useState('');
+  const [routeFilter, setRouteFilter] = useState('');
+  const [warehouseFilter, setWarehouseFilter] = useState('');
+  const [partyGroupFilter, setPartyGroupFilter] = useState('');
   const [page, setPage] = useState(1);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [filterTab, setFilterTab] = useState('filters');
+  const [visibleColumns, setVisibleColumns] = useState(DEFAULT_VISIBLE_COLUMNS);
+  const [draftColumns, setDraftColumns] = useState(DEFAULT_VISIBLE_COLUMNS);
   const [settings, setSettings] = useState(settingsMode === 'estimate' ? ESTIMATE_SETTINGS_DEFAULTS : SETTINGS_DEFAULTS);
   const [newCustomField, setNewCustomField] = useState('');
+  const [groups, setGroups] = useState([]);
   const [panelOpen, setPanelOpen] = useState(false);
   const [form, setForm] = useState({
     partyName: '',
@@ -228,7 +353,7 @@ export default function SalesTransactionPage({
     notes: '',
   });
   const [saving, setSaving] = useState(false);
-  const { outlets, products, users } = useMasterData();
+  const { outlets, products, users, routes, warehouses } = useMasterData();
 
   const defaults = settingsMode === 'estimate' ? ESTIMATE_SETTINGS_DEFAULTS : SETTINGS_DEFAULTS;
 
@@ -260,14 +385,25 @@ export default function SalesTransactionPage({
 
   useEffect(() => { load(); }, [load]);
   useEffect(() => { loadSettings(); }, [loadSettings]);
-  useEffect(() => { setPage(1); }, [search, status, userFilter]);
+  useEffect(() => {
+    api.get('/parties/groups')
+      .then(({ data }) => setGroups(Array.isArray(data) ? data : []))
+      .catch(() => setGroups([]));
+  }, []);
+  useEffect(() => { setPage(1); }, [search, status, userFilter, routeFilter, warehouseFilter, partyGroupFilter]);
 
   const filtered = useMemo(() => rows.filter((row) => {
     const blob = JSON.stringify(row).toLowerCase();
     const matchesSearch = !search || blob.includes(search.toLowerCase());
     const matchesUser = !userFilter || getUser(row) === userFilter;
-    return matchesSearch && matchesUser;
-  }), [rows, search, userFilter]);
+    const routeName = getValue(row, ['route.name', 'outlet.route.name'], '');
+    const warehouseName = getValue(row, ['warehouse.name', 'warehouse'], '');
+    const groupName = getValue(row, ['group', 'party.group', 'outlet.group'], '');
+    const matchesRoute = !routeFilter || routeName === routeFilter;
+    const matchesWarehouse = !warehouseFilter || warehouseName === warehouseFilter;
+    const matchesGroup = !partyGroupFilter || groupName === partyGroupFilter;
+    return matchesSearch && matchesUser && matchesRoute && matchesWarehouse && matchesGroup;
+  }), [rows, search, userFilter, routeFilter, warehouseFilter, partyGroupFilter]);
 
   const usersForFilter = [...new Set(rows.map((row) => getUser(row)).filter((value) => value && value !== '-'))];
   const displayed = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -387,7 +523,39 @@ export default function SalesTransactionPage({
           <option value="">Select Status</option>
           {statusOptions.map((option) => <option key={option} value={option}>{option}</option>)}
         </select>
-        <button type="button" className="so-btn-secondary border-[#174bb8] text-[#174bb8] text-sm"><Filter size={15} /> Filters</button>
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => {
+              setDraftColumns(visibleColumns);
+              setFiltersOpen((open) => !open);
+            }}
+            className="so-btn-secondary border-[#174bb8] text-[#174bb8] text-sm"
+          >
+            <Filter size={15} /> Filters
+          </button>
+          {filtersOpen && (
+            <SalesFilterPopover
+              activeTab={filterTab}
+              setActiveTab={setFilterTab}
+              routes={routes || []}
+              warehouses={warehouses || []}
+              groups={groups}
+              routeFilter={routeFilter}
+              setRouteFilter={setRouteFilter}
+              warehouseFilter={warehouseFilter}
+              setWarehouseFilter={setWarehouseFilter}
+              partyGroupFilter={partyGroupFilter}
+              setPartyGroupFilter={setPartyGroupFilter}
+              draftColumns={draftColumns}
+              setDraftColumns={setDraftColumns}
+              onApply={() => {
+                setVisibleColumns(draftColumns);
+                setFiltersOpen(false);
+              }}
+            />
+          )}
+        </div>
         <div className="ml-auto flex items-center gap-2 text-sm text-[#111827]">
           <span>{displayRange}</span>
           <button type="button" onClick={() => setPage((value) => Math.max(1, value - 1))} disabled={page === 1} className="so-icon-btn !w-10 !h-9 text-[#174bb8] disabled:opacity-40"><ChevronLeft size={14} /></button>
@@ -407,23 +575,29 @@ export default function SalesTransactionPage({
           <table className="so-table">
             <thead>
               <tr>
-                <th>No.</th>
-                <th>Date</th>
-                <th>Party</th>
-                <th>User</th>
-                <th>Status</th>
-                <th className="text-right">Amount</th>
+                {visibleColumns.transactionNo && <th>Transaction No</th>}
+                {visibleColumns.date && <th>Date</th>}
+                {visibleColumns.partyName && <th>Party Name</th>}
+                {visibleColumns.gstin && <th>GSTIN</th>}
+                {visibleColumns.amount && <th className="text-right">Amount</th>}
+                {visibleColumns.due && <th className="text-right">Due</th>}
+                {visibleColumns.comment && <th>Comment</th>}
+                {visibleColumns.createdBy && <th>Created By</th>}
+                {visibleColumns.status && <th>Status</th>}
               </tr>
             </thead>
             <tbody>
               {displayed.map((row) => (
                 <tr key={row._id}>
-                  <td className="font-mono text-xs text-[#174bb8]">{getTransactionNumber(row)}</td>
-                  <td>{getDate(row) ? new Date(getDate(row)).toLocaleDateString('en-IN') : '-'}</td>
-                  <td>{getParty(row)}</td>
-                  <td>{getUser(row)}</td>
-                  <td><span className="so-badge so-badge-info capitalize">{row.status || 'draft'}</span></td>
-                  <td className="text-right font-medium">{formatCurrency(getAmount(row))}</td>
+                  {visibleColumns.transactionNo && <td className="font-mono text-xs text-[#174bb8]">{getTransactionNumber(row)}</td>}
+                  {visibleColumns.date && <td>{getDate(row) ? new Date(getDate(row)).toLocaleDateString('en-IN') : '-'}</td>}
+                  {visibleColumns.partyName && <td>{getParty(row)}</td>}
+                  {visibleColumns.gstin && <td>{getGstin(row)}</td>}
+                  {visibleColumns.amount && <td className="text-right font-medium">{formatCurrency(getAmount(row))}</td>}
+                  {visibleColumns.due && <td className="text-right font-medium">{formatCurrency(getDue(row))}</td>}
+                  {visibleColumns.comment && <td>{getComment(row)}</td>}
+                  {visibleColumns.createdBy && <td>{getUser(row)}</td>}
+                  {visibleColumns.status && <td><span className="so-badge so-badge-info capitalize">{row.status || 'draft'}</span></td>}
                 </tr>
               ))}
             </tbody>
