@@ -1,17 +1,17 @@
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Search, Edit2, Trash2, Eye, Check, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Search } from 'lucide-react';
 import api from '../api/axios';
 import { useAuth } from '../context/AuthContext';
 import useMasterData, { invalidateMasterData } from '../hooks/useMasterData';
-import PageHeader from '../components/common/PageHeader';
-import Modal from '../components/common/Modal';
-import Badge from '../components/common/Badge';
-import DetailModal from '../components/common/DetailModal';
-import { exportToExcel } from '../utils/exportExcel';
-import { formatCurrency, formatDate } from '../utils/helpers';
+import SlidePanel from '../components/common/SlidePanel';
+import { formatCurrency } from '../utils/helpers';
 
-const modes = [
+const PAGE_SIZE = 30;
+const todayText = '22/06/2026';
+const dateRange = '22/06/2026 - 22/06/2026';
+
+const modeOptions = [
   ['cash', 'Cash'],
   ['upi', 'UPI'],
   ['cheque', 'Cheque'],
@@ -19,325 +19,307 @@ const modes = [
   ['card', 'Card'],
 ];
 
-const emptyForm = (type = 'in') => ({
-  paymentType: type,
-  outlet: '',
+const emptyForm = (paymentType) => ({
+  partyType: paymentType === 'out' ? 'Supplier' : 'Customer',
+  paymentNumber: '',
+  partyName: '',
   party: '',
-  paidToName: '',
-  category: '',
-  invoice: '',
-  amount: '',
+  outlet: '',
+  collectedBy: '',
+  paymentDate: todayText,
   mode: 'cash',
-  referenceNo: '',
-  notes: '',
-  status: 'pending',
-  isPartial: false,
+  comments: '',
+  attachment: null,
+  otherPayment: 0,
+  discount: 0,
 });
 
+const displayRange = (count, page) => {
+  if (!count) return '1 - 0 of 0';
+  const start = (page - 1) * PAGE_SIZE + 1;
+  return `${start} - ${Math.min(page * PAGE_SIZE, count)} of ${count}`;
+};
+
+const getPartyName = (payment, isOut) => (
+  isOut
+    ? payment.party?.name || payment.paidToName || payment.outlet?.name || '-'
+    : payment.outlet?.name || payment.party?.name || payment.paidToName || '-'
+);
+
+function PaymentPanel({ open, onClose, isOut, form, setForm, users, onSave, saving }) {
+  const fileRef = useRef(null);
+  const amount = Math.max(0, Number(form.otherPayment || 0) - Number(form.discount || 0));
+
+  const set = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
+
+  return (
+    <SlidePanel
+      open={open}
+      onClose={onClose}
+      title="Create payment"
+      width="w-[750px]"
+      hideClose
+      bodyClassName="p-0 flex flex-col"
+      headerActions={(
+        <>
+          <button type="button" onClick={onSave} disabled={saving} className="so-btn-primary text-sm min-w-[82px]">{saving ? 'Saving...' : 'Save'}</button>
+          <button type="button" onClick={onClose} className="text-sm px-3">Cancel</button>
+        </>
+      )}
+    >
+      <div className="flex-1 overflow-y-auto px-9 py-7">
+        <div className="grid grid-cols-2 gap-x-3 gap-y-4">
+          <div>
+            <label className="so-label text-base">Party Type</label>
+            <select className="so-input so-select w-full" value={form.partyType} onChange={(event) => set('partyType', event.target.value)}>
+              {isOut ? (
+                <>
+                  <option>Supplier</option>
+                  <option>Customer</option>
+                  <option>Distributor</option>
+                  <option>Employee</option>
+                </>
+              ) : (
+                <>
+                  <option>Customer</option>
+                  <option>Distributor</option>
+                  <option>Super Stocker</option>
+                  <option>Supplier</option>
+                </>
+              )}
+            </select>
+          </div>
+          <div>
+            <label className="so-label text-base">Payment No.</label>
+            <input className="so-input w-full" value={form.paymentNumber} onChange={(event) => set('paymentNumber', event.target.value)} placeholder="Enter payment number" />
+          </div>
+
+          <div>
+            <label className="so-label text-base">Party name</label>
+            <input className="so-input w-full" value={form.partyName} onChange={(event) => set('partyName', event.target.value)} placeholder="Enter party name" />
+          </div>
+          <div>
+            <label className="so-label text-base">Collected By</label>
+            <select className="so-input so-select w-full" value={form.collectedBy} onChange={(event) => set('collectedBy', event.target.value)}>
+              <option value="">Select User</option>
+              {users.map((user) => <option key={user._id} value={user._id}>{user.name}</option>)}
+            </select>
+          </div>
+
+          <div>
+            <label className="so-label text-base">Payment date</label>
+            <input className="so-input w-full" value={form.paymentDate} onChange={(event) => set('paymentDate', event.target.value)} />
+          </div>
+          <div>
+            <label className="so-label text-base">Payment type</label>
+            <select className="so-input so-select w-full" value={form.mode} onChange={(event) => set('mode', event.target.value)}>
+              {modeOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+            </select>
+          </div>
+
+          <div>
+            <label className="so-label text-base">Comment</label>
+            <textarea className="so-input w-full min-h-[64px]" value={form.comments} onChange={(event) => set('comments', event.target.value)} placeholder="Comment" />
+          </div>
+          <div>
+            <label className="so-label text-base">Attachment</label>
+            <button type="button" onClick={() => fileRef.current?.click()} className="h-[80px] w-[86px] border border-dashed border-[#d7dce5] bg-white text-[#333] text-xl">+</button>
+            <div className="text-base mt-1">Upload</div>
+            <input ref={fileRef} type="file" className="hidden" onChange={(event) => set('attachment', event.target.files?.[0] || null)} />
+          </div>
+        </div>
+
+        <div className="border-t border-[#eceff4] mt-16 pt-7 space-y-3">
+          <div className="grid grid-cols-[1fr_200px] items-center gap-6">
+            <label className="text-right text-base text-[#2b2f36]">Other Payment</label>
+            <input type="number" className="so-input w-full" value={form.otherPayment} onChange={(event) => set('otherPayment', event.target.value)} />
+          </div>
+          <div className="grid grid-cols-[1fr_200px] items-center gap-6">
+            <label className="text-right text-base text-[#2b2f36]">Discount (-)</label>
+            <input type="number" className="so-input w-full" value={form.discount} onChange={(event) => set('discount', event.target.value)} />
+          </div>
+        </div>
+      </div>
+
+      <div className="border-t border-[#eceff4] px-9 py-6">
+        <div className="flex items-center justify-end gap-10 text-base">
+          <span className="font-semibold">Payment amount</span>
+          <span>₹</span>
+          <span className="min-w-[32px] text-right font-semibold">{amount.toLocaleString('en-IN')}</span>
+        </div>
+      </div>
+    </SlidePanel>
+  );
+}
+
 export default function Payments() {
-  const { user, can } = useAuth();
+  const { user } = useAuth();
   const location = useLocation();
   const paymentType = location.pathname.includes('/out') ? 'out' : 'in';
   const isOut = paymentType === 'out';
   const title = isOut ? 'Payment Out' : 'Payment In';
-  const { outlets, invoices } = useMasterData();
-  const [parties, setParties] = useState([]);
+  const { users } = useMasterData();
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [modalOpen, setModalOpen] = useState(false);
-  const [viewItem, setViewItem] = useState(null);
-  const [editItem, setEditItem] = useState(null);
+  const [status, setStatus] = useState('');
+  const [mode, setMode] = useState('');
+  const [userFilter, setUserFilter] = useState('');
+  const [page, setPage] = useState(1);
+  const [panelOpen, setPanelOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [form, setForm] = useState(emptyForm(paymentType));
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
-    const { data } = await api.get('/payments', { params: { paymentType } });
-    setPayments(data);
-    setLoading(false);
-  };
+    try {
+      const { data } = await api.get('/payments', { params: { paymentType } });
+      setPayments(Array.isArray(data) ? data : []);
+    } finally {
+      setLoading(false);
+    }
+  }, [paymentType]);
 
   useEffect(() => {
     fetchData();
     setForm(emptyForm(paymentType));
-    setEditItem(null);
-  }, [paymentType]);
+    setPanelOpen(false);
+    setPage(1);
+  }, [fetchData, paymentType]);
 
-  useEffect(() => {
-    if (!isOut) return;
-    api.get('/parties', { params: { type: 'supplier' } })
-      .then(({ data }) => setParties(data))
-      .catch(() => setParties([]));
-  }, [isOut]);
+  useEffect(() => { setPage(1); }, [search, status, mode, userFilter]);
 
-  const filtered = payments.filter((p) => JSON.stringify(p).toLowerCase().includes(search.toLowerCase()));
-  const outletInvoices = form.outlet ? invoices.filter((i) => (i.outlet?._id || i.outlet) === form.outlet) : invoices;
-  const selectedInvoice = invoices.find((i) => i._id === form.invoice);
+  const filtered = useMemo(() => payments.filter((payment) => {
+    const blob = JSON.stringify(payment).toLowerCase();
+    const matchesSearch = !search || blob.includes(search.toLowerCase());
+    const matchesStatus = !status || payment.status === status;
+    const matchesMode = !mode || payment.mode === mode;
+    const matchesUser = !userFilter || payment.collectedBy?.name === userFilter;
+    return matchesSearch && matchesStatus && matchesMode && matchesUser;
+  }), [payments, search, status, mode, userFilter]);
+
+  const displayed = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const total = filtered.reduce((sum, payment) => sum + (Number(payment.amount) || 0), 0);
+  const usersForFilter = [...new Set(payments.map((payment) => payment.collectedBy?.name).filter(Boolean))];
 
   const openCreate = () => {
-    setEditItem(null);
-    setForm(emptyForm(paymentType));
-    setModalOpen(true);
+    setForm({ ...emptyForm(paymentType), collectedBy: user?._id || '' });
+    setPanelOpen(true);
   };
 
-  const openEdit = (item) => {
-    setEditItem(item);
-    setForm({
-      paymentType,
-      outlet: item.outlet?._id || item.outlet || '',
-      party: item.party?._id || item.party || '',
-      paidToName: item.paidToName || '',
-      category: item.category || '',
-      invoice: item.invoice?._id || item.invoice || '',
-      amount: item.amount,
-      mode: item.mode,
-      referenceNo: item.referenceNo || '',
-      notes: item.notes || '',
-      status: item.status,
-      isPartial: item.isPartial || false,
-    });
-    setModalOpen(true);
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!isOut && !form.outlet) return alert('Please select an outlet');
-    if (isOut && !form.party && !form.paidToName) return alert('Please select or enter payment receiver');
-    if (!form.amount || Number(form.amount) <= 0) return alert('Please enter valid amount');
+  const save = async () => {
+    const amount = Math.max(0, Number(form.otherPayment || 0) - Number(form.discount || 0));
+    if (!form.partyName.trim()) return alert('Party name is required');
+    if (amount <= 0) return alert('Payment amount is required');
 
     const payload = {
       paymentType,
-      outlet: isOut ? form.outlet || undefined : form.outlet,
-      party: isOut ? form.party || undefined : undefined,
-      paidToName: isOut ? form.paidToName : undefined,
-      category: isOut ? form.category : undefined,
-      invoice: !isOut && form.invoice ? form.invoice : undefined,
-      amount: Number(form.amount),
+      paidToName: form.partyName.trim(),
+      amount,
       mode: form.mode,
-      referenceNo: form.referenceNo,
-      notes: form.notes,
-      status: editItem ? form.status : 'pending',
-      isPartial: !isOut && form.isPartial,
-      collectedBy: user?._id,
+      referenceNo: form.paymentNumber,
+      notes: form.comments,
+      status: 'approved',
+      collectedBy: form.collectedBy || user?._id,
     };
 
+    setSaving(true);
     try {
-      if (editItem) await api.put(`/payments/${editItem._id}`, payload);
-      else await api.post('/payments', payload);
-      setModalOpen(false);
+      await api.post('/payments', payload);
+      setPanelOpen(false);
       invalidateMasterData();
       fetchData();
     } catch (err) {
       alert(err.response?.data?.message || 'Error saving payment');
+    } finally {
+      setSaving(false);
     }
   };
-
-  const handleApprove = async (id, status) => {
-    try {
-      await api.put(`/payments/approve/${id}`, { status });
-      invalidateMasterData();
-      fetchData();
-    } catch (err) {
-      alert(err.response?.data?.message || 'Error updating status');
-    }
-  };
-
-  const handleDelete = async (id) => {
-    if (!confirm('Delete this payment?')) return;
-    await api.delete(`/payments/${id}`);
-    fetchData();
-  };
-
-  const payeeName = (row) => isOut
-    ? row.party?.name || row.paidToName || row.outlet?.name || '-'
-    : row.outlet?.name || '-';
-
-  const exportCols = [
-    { key: 'paymentNumber', label: 'Payment #', accessor: 'paymentNumber' },
-    { key: 'type', label: 'Type', accessor: 'paymentType' },
-    { key: 'payee', label: isOut ? 'Paid To' : 'Received From', accessor: 'outlet.name', renderExport: (_, row) => payeeName(row) },
-    { key: 'invoice', label: 'Invoice #', accessor: 'invoice.invoiceNumber' },
-    { key: 'amount', label: 'Amount', accessor: 'amount' },
-    { key: 'mode', label: 'Mode', accessor: 'mode' },
-    { key: 'status', label: 'Status', accessor: 'status' },
-    { key: 'date', label: 'Date', accessor: 'paymentDate', renderExport: (v) => formatDate(v) },
-  ];
 
   return (
     <div>
-      <PageHeader
-        title={title}
-        description={isOut ? 'Record outgoing payments with receiver, amount, mode, reference, status, and notes.' : 'Record incoming invoice-wise partial or full payments with approval flow.'}
-        onAdd={openCreate}
-        onRefresh={fetchData}
-        onExport={() => exportToExcel(filtered, isOut ? 'payment_out' : 'payment_in', exportCols)}
-        loading={loading}
-        addLabel={isOut ? 'Add Payment Out' : 'Add Payment In'}
-      />
-
-      <div className="glass-card overflow-hidden">
-        <div className="p-4 border-b border-surface-100 flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
-          <div className="relative max-w-sm flex-1">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-surface-800/40" />
-            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search payment #, name..." className="input-field !pl-9 !py-2" />
-          </div>
-          <div className="flex gap-2 text-xs">
-            <span className="px-2 py-1 bg-yellow-50 text-yellow-700 rounded-lg">Pending: {payments.filter(p => p.status === 'pending').length}</span>
-            <span className="px-2 py-1 bg-green-50 text-green-700 rounded-lg">Approved: {payments.filter(p => p.status === 'approved').length}</span>
-          </div>
+      <div className="so-titlebar">
+        <h1 className="so-title">{title}</h1>
+        <div className="so-actions">
+          <span className="h-7 px-3 rounded-[2px] bg-[#1687d9] text-white text-sm flex items-center">Total : ₹ {total.toLocaleString('en-IN')}</span>
+          <button type="button" onClick={openCreate} className="so-btn-primary text-sm">Create {title}</button>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-surface-50/80">
+      </div>
+
+      <div className="so-filterbar">
+        <div className="so-search-group">
+          <input className="so-input" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search" />
+          <button type="button" className="so-search-button" onClick={fetchData}><Search size={18} /></button>
+        </div>
+        <input className="so-input w-[240px]" value={dateRange} readOnly />
+        <select className="so-input so-select w-[240px]" value={status} onChange={(event) => setStatus(event.target.value)}>
+          <option value="">Select Status</option>
+          <option value="approved">Approved</option>
+          <option value="pending">Pending</option>
+          <option value="rejected">Rejected</option>
+        </select>
+        <select className="so-input so-select w-[240px]" value={mode} onChange={(event) => setMode(event.target.value)}>
+          <option value="">Select Type</option>
+          {modeOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+        </select>
+        <select className="so-input so-select w-[240px]" value={userFilter} onChange={(event) => setUserFilter(event.target.value)}>
+          <option value="">Select User</option>
+          {usersForFilter.map((name) => <option key={name} value={name}>{name}</option>)}
+        </select>
+        <div className="ml-auto flex items-center gap-2 text-sm text-[#111827]">
+          <span>{displayRange(filtered.length, page)}</span>
+          <button type="button" onClick={() => setPage((value) => Math.max(1, value - 1))} disabled={page === 1} className="so-icon-btn !w-10 !h-9 text-[#174bb8] disabled:opacity-40"><ChevronLeft size={14} /></button>
+          <button type="button" onClick={() => setPage((value) => Math.min(totalPages, value + 1))} disabled={page === totalPages} className="so-icon-btn !w-10 !h-9 text-[#174bb8] disabled:opacity-40"><ChevronRight size={14} /></button>
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="so-empty"><p>Loading...</p></div>
+      ) : displayed.length === 0 ? (
+        <div className="so-empty">
+          <div className="so-empty-illustration" />
+          <p>Sorry! No payments found.</p>
+        </div>
+      ) : (
+        <div className="so-table-panel">
+          <table className="so-table">
+            <thead>
               <tr>
-                <th className="table-header">Payment #</th>
-                <th className="table-header">{isOut ? 'Paid To' : 'Received From'}</th>
-                <th className="table-header">Invoice</th>
-                <th className="table-header">Amount</th>
-                <th className="table-header">Mode</th>
-                <th className="table-header">Status</th>
-                <th className="table-header">Date</th>
-                <th className="table-header text-right">Actions</th>
+                <th>Payment No.</th>
+                <th>Party</th>
+                <th>Payment Type</th>
+                <th>Created By</th>
+                <th>Status</th>
+                <th className="text-right">Amount</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-surface-100">
-              {loading ? (
-                <tr><td colSpan={8} className="table-cell text-center py-12 text-surface-800/40">Loading...</td></tr>
-              ) : filtered.length === 0 ? (
-                <tr><td colSpan={8} className="table-cell text-center py-12 text-surface-800/40">No records found.</td></tr>
-              ) : filtered.map((row) => (
-                <tr key={row._id} className="hover:bg-surface-50/50">
-                  <td className="table-cell font-mono font-medium">{row.paymentNumber}</td>
-                  <td className="table-cell">{payeeName(row)}</td>
-                  <td className="table-cell font-mono text-sm">{row.invoice?.invoiceNumber || '-'}</td>
-                  <td className={`table-cell font-mono font-medium ${isOut ? 'text-red-600' : 'text-green-700'}`}>{formatCurrency(row.amount)}</td>
-                  <td className="table-cell"><Badge status={row.mode} label={row.mode?.toUpperCase()} /></td>
-                  <td className="table-cell"><Badge status={row.status} /></td>
-                  <td className="table-cell">{formatDate(row.paymentDate)}</td>
-                  <td className="table-cell text-right">
-                    <div className="flex justify-end gap-1">
-                      <button onClick={() => setViewItem(row)} className="p-1.5 hover:bg-blue-50 text-blue-600 rounded-lg" title="View"><Eye size={16} /></button>
-                      {row.status === 'pending' && can('approvePayments') && (
-                        <>
-                          <button onClick={() => handleApprove(row._id, 'approved')} className="p-1.5 hover:bg-green-50 text-green-600 rounded-lg" title="Approve"><Check size={16} /></button>
-                          <button onClick={() => handleApprove(row._id, 'rejected')} className="p-1.5 hover:bg-red-50 text-red-600 rounded-lg" title="Reject"><X size={16} /></button>
-                        </>
-                      )}
-                      <button onClick={() => openEdit(row)} className="p-1.5 hover:bg-brand-50 text-brand-600 rounded-lg" title="Edit"><Edit2 size={16} /></button>
-                      <button onClick={() => handleDelete(row._id)} className="p-1.5 hover:bg-red-50 text-red-600 rounded-lg" title="Delete"><Trash2 size={16} /></button>
-                    </div>
-                  </td>
+            <tbody>
+              {displayed.map((payment) => (
+                <tr key={payment._id}>
+                  <td className="font-mono text-xs text-[#174bb8]">{payment.paymentNumber}</td>
+                  <td>{getPartyName(payment, isOut)}</td>
+                  <td className="capitalize">{payment.mode?.replace('_', ' ') || '-'}</td>
+                  <td>{payment.collectedBy?.name || '-'}</td>
+                  <td><span className="so-badge so-badge-info capitalize">{payment.status || 'approved'}</span></td>
+                  <td className="text-right font-medium">{formatCurrency(payment.amount)}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-      </div>
+      )}
 
-      <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title={editItem ? `Edit ${editItem.paymentNumber}` : title} size="lg">
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {!isOut ? (
-              <>
-                <div>
-                  <label className="block text-sm font-medium mb-1.5">Outlet / Store *</label>
-                  <select value={form.outlet} onChange={(e) => setForm({ ...form, outlet: e.target.value, invoice: '' })} className="input-field" required>
-                    <option value="">Select outlet...</option>
-                    {outlets.map((o) => <option key={o._id} value={o._id}>{o.name} - Outstanding: {formatCurrency(o.outstandingBalance)}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1.5">Link to Invoice</label>
-                  <select value={form.invoice} onChange={(e) => {
-                    const inv = invoices.find((i) => i._id === e.target.value);
-                    setForm({ ...form, invoice: e.target.value, amount: inv ? inv.balanceDue : form.amount });
-                  }} className="input-field">
-                    <option value="">Select invoice (optional)...</option>
-                    {outletInvoices.map((i) => <option key={i._id} value={i._id}>{i.invoiceNumber} - Due: {formatCurrency(i.balanceDue)}</option>)}
-                  </select>
-                </div>
-              </>
-            ) : (
-              <>
-                <div>
-                  <label className="block text-sm font-medium mb-1.5">Supplier / Party</label>
-                  <select value={form.party} onChange={(e) => setForm({ ...form, party: e.target.value })} className="input-field">
-                    <option value="">Select supplier...</option>
-                    {parties.map((p) => <option key={p._id} value={p._id}>{p.name}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1.5">Paid To Name</label>
-                  <input value={form.paidToName} onChange={(e) => setForm({ ...form, paidToName: e.target.value })} className="input-field" placeholder="Vendor, employee, transport, etc." />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1.5">Category</label>
-                  <input value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} className="input-field" placeholder="Purchase, salary, transport..." />
-                </div>
-              </>
-            )}
-
-            <div>
-              <label className="block text-sm font-medium mb-1.5">Amount *</label>
-              <input type="number" min="1" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} className="input-field" required />
-              {selectedInvoice && <p className="text-xs text-surface-800/50 mt-1">Invoice balance: {formatCurrency(selectedInvoice.balanceDue)}</p>}
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1.5">Payment Mode *</label>
-              <select value={form.mode} onChange={(e) => setForm({ ...form, mode: e.target.value })} className="input-field">
-                {modes.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1.5">Reference / UTR No</label>
-              <input value={form.referenceNo} onChange={(e) => setForm({ ...form, referenceNo: e.target.value })} className="input-field" placeholder="UPI ref, cheque no..." />
-            </div>
-            {editItem && (
-              <div>
-                <label className="block text-sm font-medium mb-1.5">Approval Status</label>
-                <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })} className="input-field">
-                  <option value="pending">Pending</option>
-                  <option value="approved">Approved</option>
-                  <option value="rejected">Rejected</option>
-                </select>
-              </div>
-            )}
-            {!isOut && (
-              <div className="sm:col-span-2">
-                <label className="flex items-center gap-2 text-sm">
-                  <input type="checkbox" checked={form.isPartial} onChange={(e) => setForm({ ...form, isPartial: e.target.checked })} />
-                  Partial payment
-                </label>
-              </div>
-            )}
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-1.5">Notes</label>
-            <textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} className="input-field min-h-[60px]" />
-          </div>
-
-          <div className="flex justify-end gap-3 pt-4 border-t">
-            <button type="button" onClick={() => setModalOpen(false)} className="btn-secondary">Cancel</button>
-            <button type="submit" className="btn-primary">{editItem ? 'Update Payment' : 'Save Payment'}</button>
-          </div>
-        </form>
-      </Modal>
-
-      <DetailModal isOpen={!!viewItem} onClose={() => setViewItem(null)} title="Payment Details" data={viewItem} fields={[
-        { label: 'Payment Number', accessor: 'paymentNumber' },
-        { label: 'Type', accessor: 'paymentType' },
-        { label: isOut ? 'Paid To' : 'Received From', accessor: isOut ? 'party.name' : 'outlet.name' },
-        { label: 'Paid To Name', accessor: 'paidToName' },
-        { label: 'Category', accessor: 'category' },
-        { label: 'Invoice', accessor: 'invoice.invoiceNumber' },
-        { label: 'Amount', accessor: 'amount', type: 'currency' },
-        { label: 'Payment Mode', accessor: 'mode', type: 'badge' },
-        { label: 'Status', accessor: 'status', type: 'badge' },
-        { label: 'Reference No', accessor: 'referenceNo' },
-        { label: 'Payment Date', accessor: 'paymentDate', type: 'datetime' },
-        { label: 'Notes', accessor: 'notes' },
-      ]} />
+      <PaymentPanel
+        open={panelOpen}
+        onClose={() => setPanelOpen(false)}
+        isOut={isOut}
+        form={form}
+        setForm={setForm}
+        users={users || []}
+        onSave={save}
+        saving={saving}
+      />
     </div>
   );
 }
