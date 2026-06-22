@@ -25,6 +25,8 @@ import Employees from './pages/Employees';
 import Admins from './pages/Admins';
 import Leads from './pages/Leads';
 import Expenses from './pages/Expenses';
+import MyAccount from './pages/MyAccount';
+import Subscription from './pages/Subscription';
 
 // ── Inventory ────────────────────────────────────────────────────
 import Items from './pages/inventory/Items';
@@ -173,6 +175,8 @@ function AppRoutes() {
 
         {/* Settings & Support */}
         <Route path="settings" element={<RoleRoute path="/app/settings"><P><SettingsPage /></P></RoleRoute>} />
+        <Route path="account" element={<P><MyAccount /></P>} />
+        <Route path="subscription" element={<P><Subscription /></P>} />
         <Route path="support"  element={<RoleRoute path="/app/support"><P><Support /></P></RoleRoute>} />
         <Route path="expenses" element={<RoleRoute path="/app/expenses"><P><Expenses /></P></RoleRoute>} />
       </Route>

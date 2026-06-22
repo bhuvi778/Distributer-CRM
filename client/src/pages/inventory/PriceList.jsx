@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Archive, Edit2, Plus } from 'lucide-react';
 import api from '../../api/axios';
 
@@ -22,6 +23,7 @@ const emptyForm = {
 const toNumber = (value) => Number(value || 0);
 
 export default function PriceList() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [lists, setLists] = useState([]);
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -52,6 +54,13 @@ export default function PriceList() {
     setImportEnabled(false);
     setCreateMode(true);
   };
+
+  useEffect(() => {
+    if (searchParams.get('create') === '1') {
+      openAdd();
+      setSearchParams({}, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   const openEdit = (list) => {
     setEditing(list);

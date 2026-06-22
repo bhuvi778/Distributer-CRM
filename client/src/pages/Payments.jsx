@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useSearchParams } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, Search } from 'lucide-react';
 import api from '../api/axios';
 import { useAuth } from '../context/AuthContext';
@@ -155,6 +155,7 @@ function PaymentPanel({ open, onClose, isOut, form, setForm, users, onSave, savi
 export default function Payments({ forcedType }) {
   const { user } = useAuth();
   const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const paymentType = forcedType || (location.pathname.includes('/out') ? 'out' : 'in');
   const isOut = paymentType === 'out';
   const title = isOut ? 'Payment Out' : 'Payment In';
@@ -207,6 +208,13 @@ export default function Payments({ forcedType }) {
     setForm({ ...emptyForm(paymentType), collectedBy: user?._id || '' });
     setPanelOpen(true);
   };
+
+  useEffect(() => {
+    if (searchParams.get('create') === '1') {
+      openCreate();
+      setSearchParams({}, { replace: true });
+    }
+  }, [searchParams, setSearchParams, paymentType]);
 
   const save = async () => {
     const amount = Math.max(0, Number(form.otherPayment || 0) - Number(form.discount || 0));

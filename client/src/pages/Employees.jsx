@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Search, Edit2, RefreshCw, Shield, Check, Upload, Settings, X } from 'lucide-react';
 import api from '../api/axios';
 import SlidePanel from '../components/common/SlidePanel';
@@ -103,6 +104,7 @@ function UserSettingsModal({ customFields, setCustomFields, saving, onClose, onS
 
 export default function Employees() {
   const { user } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const isAdmin = ['admin', 'super_admin'].includes(user?.role);
 
   const [employees, setEmployees] = useState([]);
@@ -216,6 +218,13 @@ export default function Employees() {
     setForm(emptyForm());
     setPanelOpen(true);
   };
+
+  useEffect(() => {
+    if (searchParams.get('create') === '1' && isAdmin) {
+      openAdd();
+      setSearchParams({}, { replace: true });
+    }
+  }, [searchParams, setSearchParams, isAdmin]);
 
   const openEdit = (emp) => {
     setEditing(emp);

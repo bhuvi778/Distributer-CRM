@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   ChevronDown, ChevronLeft, ChevronRight, Download, Filter, Plus, Search, Settings, X,
 } from 'lucide-react';
@@ -323,6 +324,7 @@ export default function SalesTransactionPage({
   settingsMode = 'standard',
   createEnabled = true,
 }) {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -451,6 +453,13 @@ export default function SalesTransactionPage({
     });
     setPanelOpen(true);
   };
+
+  useEffect(() => {
+    if (searchParams.get('create') === '1' && createEnabled) {
+      openCreate();
+      setSearchParams({}, { replace: true });
+    }
+  }, [searchParams, setSearchParams, createEnabled]);
 
   const saveCreate = async () => {
     if (!createEndpoint || !createEnabled) {

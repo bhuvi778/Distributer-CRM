@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, Download, Edit2, MapPin, Plus, Search, Settings, Upload, X } from 'lucide-react';
 import api from '../../api/axios';
 import SlidePanel from '../../components/common/SlidePanel';
@@ -185,6 +186,7 @@ function PartySettingsModal({
 }
 
 export default function PartyPage({ type, title }) {
+  const [searchParams, setSearchParams] = useSearchParams();
   const pageTitle = title || TITLE_BY_TYPE[type] || 'Party';
   const isVisited = type === 'visited';
   const [parties, setParties] = useState([]);
@@ -274,6 +276,13 @@ export default function PartyPage({ type, title }) {
     setForm(emptyForm(type));
     setPanelOpen(true);
   };
+
+  useEffect(() => {
+    if (searchParams.get('create') === '1' && !isVisited) {
+      openAdd();
+      setSearchParams({}, { replace: true });
+    }
+  }, [searchParams, setSearchParams, type, isVisited]);
 
   const openEdit = (party) => {
     setEditing(party);

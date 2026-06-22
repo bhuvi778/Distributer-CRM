@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Download, Edit2, Plus, Search, Settings, Trash2, Upload, X } from 'lucide-react';
 import api from '../../api/axios';
 import SlidePanel from '../../components/common/SlidePanel';
@@ -69,6 +70,7 @@ function CurrencyField({ value, onChange, placeholder }) {
 }
 
 export default function Items() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [items, setItems] = useState([]);
   const [warehouses, setWarehouses] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -113,6 +115,13 @@ export default function Items() {
     setForm({ ...emptyForm(), warehouse: warehouseFilter || 'Main' });
     setPanelOpen(true);
   };
+
+  useEffect(() => {
+    if (searchParams.get('create') === '1') {
+      openAdd();
+      setSearchParams({}, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   const openEdit = (item) => {
     setEditing(item);
