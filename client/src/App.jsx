@@ -14,6 +14,8 @@ import Payments from './pages/Payments';
 import Invoices from './pages/Invoices';
 import Orders from './pages/Orders';
 import Purchases from './pages/Purchases';
+import PurchaseInvoices from './pages/purchases/PurchaseInvoices';
+import PurchaseReturns from './pages/purchases/PurchaseReturns';
 import Production from './pages/Production';
 import Reports from './pages/Reports';
 import SettingsPage from './pages/Settings';
@@ -126,7 +128,12 @@ function AppRoutes() {
         </Route>
 
         {/* ── PURCHASES ── */}
-        <Route path="purchases"  element={<RoleRoute path="/app/purchases"><P><Purchases /></P></RoleRoute>} />
+        <Route path="purchases">
+          <Route index element={<Navigate to="orders" replace />} />
+          <Route path="orders"   element={<RoleRoute path="/app/purchases/orders"><P><Purchases /></P></RoleRoute>} />
+          <Route path="invoices" element={<RoleRoute path="/app/purchases/invoices"><P><PurchaseInvoices /></P></RoleRoute>} />
+          <Route path="returns"  element={<RoleRoute path="/app/purchases/returns"><P><PurchaseReturns /></P></RoleRoute>} />
+        </Route>
         <Route path="production">
           <Route index element={<Navigate to="production-orders" replace />} />
           <Route path="grm" element={<RoleRoute path="/app/production"><P><Production /></P></RoleRoute>} />

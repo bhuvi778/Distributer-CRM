@@ -31,7 +31,10 @@ export const PERMISSION_MODULES = [
   { id: 'sales-credit-note', path: '/app/sales/credit-note',      label: 'Credit Note',       section: 'Sales' },
 
   // Purchases
-  { id: 'purchases',   path: '/app/purchases',   label: 'Purchase Orders', section: 'Purchases' },
+  { id: 'purchases',         path: '/app/purchases',          label: 'Purchases',         section: 'Purchases' },
+  { id: 'purchase-orders',   path: '/app/purchases/orders',   label: 'Purchase Orders',   section: 'Purchases' },
+  { id: 'purchase-invoices', path: '/app/purchases/invoices', label: 'Purchase Invoices', section: 'Purchases' },
+  { id: 'purchase-returns',  path: '/app/purchases/returns',  label: 'Purchase Returns',  section: 'Purchases' },
   { id: 'production',  path: '/app/production',  label: 'Production',      section: 'Production' },
 
   // Van Sales
@@ -112,7 +115,7 @@ export const ROLE_DEFAULT_MODULES = {
     'inventory-items','inventory-warehouses','inventory-pricelist','inventory-transfers',
     'parties-customers','parties-distributors','parties-superstockers','parties-suppliers','parties-visited','parties-groups',
     'sales-estimates','sales-orders','sales-invoices','sales-delivery','sales-returns','sales-credit-note',
-    'purchases','production','van-sales',
+    'purchases','purchase-orders','purchase-invoices','purchase-returns','production','van-sales',
     'payments','invoices','reports',
     'routes-regions','routes-cities','routes-areas',
     'targets','support','settings','employees',
@@ -147,7 +150,7 @@ export const ROLE_DEFAULT_MODULES = {
     'targets','support','settings',
   ],
   accountant: [
-    'dashboard','sales-invoices','sales-credit-note','invoices','payments','purchases','reports','support','settings',
+    'dashboard','sales-invoices','sales-credit-note','invoices','payments','purchases','purchase-orders','purchase-invoices','purchase-returns','reports','support','settings',
   ],
   distributor: [
     'dashboard','inventory-items',
@@ -157,7 +160,7 @@ export const ROLE_DEFAULT_MODULES = {
   ],
   manufacturer: [
     'dashboard','inventory-items','inventory-warehouses',
-    'purchases','production',
+    'purchases','purchase-orders','purchase-invoices','purchase-returns','production',
     'sales-orders','sales-invoices','sales-credit-note',
     'reports','support','settings',
   ],

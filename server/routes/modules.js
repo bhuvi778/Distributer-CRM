@@ -79,6 +79,10 @@ const purchases = Router();
 crudRoutes(purchases, ctrl.purchaseCtrl);
 router.use('/purchases', purchases);
 
+const purchaseReturns = Router();
+crudRoutes(purchaseReturns, ctrl.purchaseReturnCtrl);
+router.use('/purchase-returns', purchaseReturns);
+
 const support = Router();
 crudRoutes(support, ctrl.supportCtrl);
 router.use('/support', support);

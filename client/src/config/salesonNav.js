@@ -78,7 +78,9 @@ export const SALESON_NAV_DEF = [
     label: 'Purchases',
     icon: ClipboardList,
     items: [
-      { path: '/app/purchases',  moduleId: 'purchases',  label: 'Purchase Orders' },
+      { path: '/app/purchases/orders',   moduleId: 'purchase-orders',   label: 'Purchase Orders' },
+      { path: '/app/purchases/invoices', moduleId: 'purchase-invoices', label: 'Purchase Invoices' },
+      { path: '/app/purchases/returns',  moduleId: 'purchase-returns',  label: 'Purchase Returns' },
     ],
   },
   {

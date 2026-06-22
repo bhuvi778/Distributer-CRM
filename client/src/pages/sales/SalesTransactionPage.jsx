@@ -39,13 +39,13 @@ const getValue = (obj, keys, fallback = '-') => {
 };
 
 const getTransactionNumber = (row) => getValue(row, [
-  'estimateNumber', 'orderNumber', 'invoiceNumber', 'challanNumber', 'returnNumber', 'creditNoteNumber', 'referenceNumber',
+  'estimateNumber', 'orderNumber', 'invoiceNumber', 'challanNumber', 'returnNumber', 'creditNoteNumber', 'purchaseNumber', 'purchaseReturnNumber', 'referenceNumber',
 ], '-');
 
-const getParty = (row) => getValue(row, ['partyName', 'outlet.name', 'party.name', 'customerName'], '-');
+const getParty = (row) => getValue(row, ['partyName', 'supplier', 'outlet.name', 'party.name', 'customerName'], '-');
 const getUser = (row) => getValue(row, ['createdBy.name', 'salesRep.name', 'deliveryAgent.name', 'processedBy.name'], '-');
 const getAmount = (row) => Number(getValue(row, ['grandTotal', 'amount', 'subtotal'], 0)) || 0;
-const getDate = (row) => getValue(row, ['invoiceDate', 'orderDate', 'returnDate', 'createdAt'], null);
+const getDate = (row) => getValue(row, ['invoiceDate', 'orderDate', 'returnDate', 'purchaseDate', 'createdAt'], null);
 const getGstin = (row) => getValue(row, ['gstin', 'outlet.gstin', 'party.gstin'], '-');
 const getDue = (row) => Number(getValue(row, ['balanceDue', 'dueAmount'], 0)) || 0;
 const getComment = (row) => getValue(row, ['comment', 'notes', 'reason'], '-');
@@ -476,10 +476,17 @@ export default function SalesTransactionPage({
       challan: { outlet: form.outlet || undefined, vehicleNumber: form.vehicleNumber, items: item.map((entry) => ({ ...entry, unit: product?.unit || '' })), notes: form.notes },
       return: { outlet: form.outlet || undefined, items: item, subtotal: amount, grandTotal: amount, notes: form.notes },
       credit_note: { partyName: form.partyName, outlet: form.outlet || undefined, amount, notes: form.notes },
+      purchase_order: { supplier: form.partyName, outlet: form.outlet || undefined, items: item, subtotal: amount, grandTotal: amount, notes: form.notes },
+      purchase_invoice: { type: 'purchase', outlet: form.outlet || undefined, salesRep: form.salesRep || undefined, items: item, subtotal: amount, grandTotal: amount, notes: form.notes },
+      purchase_return: { supplier: form.partyName, outlet: form.outlet || undefined, items: item, subtotal: amount, grandTotal: amount, notes: form.notes },
     };
 
     if (type === 'order' && (!form.outlet || !form.salesRep || !form.product)) {
       alert('Sales order ke liye Outlet, Sales Rep aur Product required hain');
+      return;
+    }
+    if (type === 'purchase_order' && !form.partyName.trim()) {
+      alert('Supplier name required');
       return;
     }
 

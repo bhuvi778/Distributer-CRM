@@ -13,6 +13,7 @@ import VanSales from '../models/VanSales.js';
 import Target from '../models/Target.js';
 import ProductionOrder from '../models/ProductionOrder.js';
 import Purchase from '../models/Purchase.js';
+import PurchaseReturn from '../models/PurchaseReturn.js';
 import Settings from '../models/Settings.js';
 import SupportTicket from '../models/SupportTicket.js';
 import User from '../models/User.js';
@@ -30,6 +31,7 @@ export const vanSalesCtrl = createCRUD(VanSales, ['assignedTo', 'salesRep', 'rou
 export const targetCtrl = createCRUD(Target, ['assignments.user']);
 export const productionCtrl = createCRUD(ProductionOrder, ['finishedGood', 'bom.rawMaterial'], 'production');
 export const purchaseCtrl = createCRUD(Purchase, ['outlet', 'items.product'], 'purchases');
+export const purchaseReturnCtrl = createCRUD(PurchaseReturn, ['outlet', 'purchase', 'items.product'], 'purchase-returns');
 export const supportCtrl = createCRUD(SupportTicket, ['createdBy', 'assignedTo', 'messages.sender']);
 
 export const settingsCtrl = {
