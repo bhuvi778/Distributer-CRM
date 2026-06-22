@@ -463,13 +463,17 @@ export default function SettingsPage() {
   const createTaxRate = () => persistNext({ ...settings, taxRates: [...settings.taxRates, { name: 'GST @ 0%', taxType: 'GST', type: 'GST', rate: 0 }] });
 
   return (
-    <div className="min-h-screen bg-white text-slate-900">
+    <div className="h-[calc(100vh-52px)] overflow-hidden bg-white text-slate-900">
+      <div
+        className="h-[111.111%]"
+        style={{ transform: 'scale(0.9)', transformOrigin: 'top left', width: '111.111%' }}
+      >
       <div className="flex h-[70px] items-center border-b border-[#d6dbe2] bg-white px-5">
         <h1 className="text-[26px] font-medium">Settings</h1>
       </div>
 
-      <div className="grid min-h-[calc(100vh-70px)] grid-cols-[250px_1fr] bg-white">
-        <aside className="border-r border-[#d6dbe2] bg-[#fbfbfc]">
+      <div className="grid h-[calc(100%-70px)] grid-cols-[250px_1fr] overflow-hidden bg-white">
+        <aside className="overflow-hidden border-r border-[#d6dbe2] bg-[#fbfbfc]">
           {SETTINGS_TABS.map(({ id, label, icon: Icon }) => (
             <button
               key={id}
@@ -487,7 +491,7 @@ export default function SettingsPage() {
           ))}
         </aside>
 
-        <main className="relative min-w-0 bg-white">
+        <main className="relative min-w-0 overflow-y-auto bg-white">
           <div className="sticky top-0 z-10 flex h-[76px] items-center justify-between border-b border-[#e7e9ee] bg-white px-16">
             <h2 className="text-[24px] font-semibold">
               {activeTab === 'company' && 'Company details'}
@@ -809,6 +813,7 @@ export default function SettingsPage() {
             <ChevronDown size={18} />
           </div>
         </main>
+      </div>
       </div>
     </div>
   );
