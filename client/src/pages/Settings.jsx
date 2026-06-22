@@ -464,10 +464,6 @@ export default function SettingsPage() {
 
   return (
     <div className="h-[calc(100vh-52px)] overflow-hidden bg-white text-slate-900">
-      <div
-        className="h-[111.111%]"
-        style={{ transform: 'scale(0.9)', transformOrigin: 'top left', width: '111.111%' }}
-      >
       <div className="flex h-[70px] items-center border-b border-[#d6dbe2] bg-white px-5">
         <h1 className="text-[26px] font-medium">Settings</h1>
       </div>
@@ -813,7 +809,6 @@ export default function SettingsPage() {
             <ChevronDown size={18} />
           </div>
         </main>
-      </div>
       </div>
     </div>
   );
