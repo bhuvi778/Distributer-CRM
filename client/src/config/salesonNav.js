@@ -64,8 +64,6 @@ export const SALESON_NAV_DEF = [
     items: [
       { path: '/app/sales/estimates',         moduleId: 'sales-estimates', label: 'Estimates' },
       { path: '/app/sales/orders',            moduleId: 'sales-orders',    label: 'Sales Orders' },
-      { path: '/app/production/production-orders', moduleId: 'production', label: 'Production' },
-      { path: '/app/reports',                  moduleId: 'reports',         label: 'Report' },
       { path: '/app/sales/invoices',          moduleId: 'sales-invoices',  label: 'Sales Invoices' },
       { path: '/app/sales/delivery-challans', moduleId: 'sales-delivery',  label: 'Delivery Challans' },
       { path: '/app/sales/returns',           moduleId: 'sales-returns',   label: 'Sales Returns' },
@@ -84,30 +82,11 @@ export const SALESON_NAV_DEF = [
     ],
   },
   {
-    type: 'group',
-    id: 'production',
-    label: 'Production',
-    icon: ClipboardList,
-    items: [
-      { path: '/app/production/grm',               moduleId: 'production', label: 'GRM' },
-      { path: '/app/production/bom',               moduleId: 'production', label: 'BOM' },
-      { path: '/app/production/work-orders',       moduleId: 'production', label: 'Work Orders' },
-      { path: '/app/production/production-orders', moduleId: 'production', label: 'Production Orders' },
-    ],
-  },
-  {
     type: 'link',
     path: '/app/van-sales',
     moduleId: 'van-sales',
     icon: Truck,
     label: 'Van Sales',
-  },
-  {
-    type: 'link',
-    path: '/app/sales/delivery-challans',
-    moduleId: 'delivery',
-    icon: FileText,
-    label: 'Delivery',
   },
   {
     type: 'group',
@@ -143,6 +122,25 @@ export const SALESON_NAV_DEF = [
     moduleId: 'employees',
     icon: UserCog,
     label: 'Users',
+  },
+  {
+    type: 'group',
+    id: 'production',
+    label: 'Production',
+    icon: ClipboardList,
+    items: [
+      { path: '/app/production/grm',               moduleId: 'production', label: 'GRN' },
+      { path: '/app/production/bom',               moduleId: 'production', label: 'BOM' },
+      { path: '/app/production/work-orders',       moduleId: 'production', label: 'Work Orders' },
+      { path: '/app/production/production-orders', moduleId: 'production', label: 'Production Orders' },
+    ],
+  },
+  {
+    type: 'link',
+    path: '/app/reports',
+    moduleId: 'reports',
+    icon: FileText,
+    label: 'Report',
   },
   {
     type: 'link',

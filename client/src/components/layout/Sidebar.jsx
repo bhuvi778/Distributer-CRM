@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { ChevronDown, ChevronUp, Headphones, Rocket, Settings } from 'lucide-react';
+import { ChevronDown, ChevronUp, Headphones, Settings } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { canAccessPath } from '../../config/roles';
 import { getSalesOnNav, isNavActive, isGroupOpen } from '../../config/salesonNav';
@@ -81,10 +81,6 @@ export default function Sidebar() {
       </nav>
 
       <div className="border-t border-[#ededed] bg-white">
-        <div className="mx-1.5 my-2.5 rounded-md bg-[#e60000] text-white px-2.5 py-2.5 flex gap-2 items-center text-xs font-semibold leading-snug">
-          <Rocket size={17} />
-          <span>Pro Trial plan expires in 7 days | Upgrade Now</span>
-        </div>
         {canAccessPath(user, '/app/settings') && (
           <Link to="/app/settings" className={`so-nav-link ${location.pathname === '/app/settings' ? 'so-nav-link-active' : ''}`}>
             <Settings size={18} strokeWidth={1.55} />
