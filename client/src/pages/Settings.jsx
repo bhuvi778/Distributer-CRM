@@ -232,13 +232,14 @@ function SaveButton({ saved, onClick, disabled }) {
   );
 }
 
-function UploadBox({ label }) {
+function UploadBox({ label, disabled }) {
   return (
     <div>
       <div className="mb-1.5 text-[15px] font-medium text-slate-900">{label}</div>
       <button
         type="button"
-        className="flex h-[130px] w-[130px] flex-col items-center justify-center gap-4 border border-dashed border-slate-300 bg-white text-[18px] text-slate-900"
+        disabled={disabled}
+        className="flex h-[130px] w-[130px] flex-col items-center justify-center gap-4 border border-dashed border-slate-300 bg-white text-[18px] text-slate-900 disabled:cursor-not-allowed disabled:opacity-60"
       >
         <Plus size={15} />
         <span>Upload</span>
@@ -401,16 +402,26 @@ function NotificationsTable({ title, rows, onToggle, disabled }) {
 }
 
 export default function SettingsPage() {
-  const { can } = useAuth();
-  const canEdit = typeof can === 'function' ? can('companySettings') : true;
+  const { can, user } = useAuth();
+  const isFieldReadOnly = ['sales_executive', 'sales_rep'].includes(user?.role);
+  const canEdit = !isFieldReadOnly && (typeof can === 'function' ? can('companySettings') : true);
   const [settings, setSettings] = useState(null);
   const [activeTab, setActiveTab] = useState('company');
   const [saved, setSaved] = useState(false);
   const [templateOpen, setTemplateOpen] = useState(false);
+  const visibleTabs = isFieldReadOnly
+    ? SETTINGS_TABS.filter((tab) => ['company', 'taxes'].includes(tab.id))
+    : SETTINGS_TABS;
 
   useEffect(() => {
     api.get('/settings').then((response) => setSettings(mergeSettings(response.data || {}))).catch(() => setSettings(mergeSettings()));
   }, []);
+
+  useEffect(() => {
+    if (isFieldReadOnly && !['company', 'taxes'].includes(activeTab)) {
+      setActiveTab('company');
+    }
+  }, [activeTab, isFieldReadOnly]);
 
   if (!settings) return <div className="py-20 text-center text-sm text-slate-500">Loading settings...</div>;
 
@@ -470,7 +481,7 @@ export default function SettingsPage() {
 
       <div className="grid h-[calc(100%-70px)] grid-cols-[250px_1fr] overflow-hidden bg-white">
         <aside className="overflow-hidden border-r border-[#d6dbe2] bg-[#fbfbfc]">
-          {SETTINGS_TABS.map(({ id, label, icon: Icon }) => (
+          {visibleTabs.map(({ id, label, icon: Icon }) => (
             <button
               key={id}
               type="button"
@@ -498,11 +509,13 @@ export default function SettingsPage() {
               {activeTab === 'taxes' && 'Tax Rates'}
             </h2>
             {activeTab === 'taxes' ? (
+              canEdit && (
               <button type="button" onClick={createTaxRate} disabled={!canEdit} className="so-btn-primary text-sm">
                 Create Tax
               </button>
+              )
             ) : (
-              <SaveButton saved={saved} onClick={handleSave} disabled={!canEdit} />
+              canEdit && <SaveButton saved={saved} onClick={handleSave} disabled={!canEdit} />
             )}
           </div>
 
@@ -555,8 +568,8 @@ export default function SettingsPage() {
 
               <AccordionSection title="Upload logo and signature">
                 <div className="grid grid-cols-2 gap-20">
-                  <UploadBox label="Upload logo" />
-                  <UploadBox label="Upload Signature" />
+                  <UploadBox label="Upload logo" disabled={!canEdit} />
+                  <UploadBox label="Upload Signature" disabled={!canEdit} />
                 </div>
               </AccordionSection>
 
@@ -583,7 +596,7 @@ export default function SettingsPage() {
                   </div>
                   <div>
                     <div className="mb-3 text-[15px] font-medium">Holidays</div>
-                    <button type="button" className="h-10 w-[624px] border border-slate-500 text-[15px] text-slate-600">Add holiday</button>
+                    <button type="button" disabled={!canEdit} className="h-10 w-[624px] border border-slate-500 text-[15px] text-slate-600 disabled:cursor-not-allowed disabled:opacity-60">Add holiday</button>
                   </div>
                 </div>
               </AccordionSection>
@@ -610,7 +623,7 @@ export default function SettingsPage() {
                   <Field label="IFSC code">
                     <Input value={settings.bankDetails?.ifscCode || ''} onChange={(event) => nested('bankDetails', 'ifscCode', event.target.value)} disabled={!canEdit} />
                   </Field>
-                  <UploadBox label="Upload QR Code" />
+                  <UploadBox label="Upload QR Code" disabled={!canEdit} />
                 </div>
               </AccordionSection>
             </div>
@@ -776,7 +789,7 @@ export default function SettingsPage() {
                       <th className="h-14 border-r border-[#d7dce3] px-4 text-left text-[15px] font-semibold">Name</th>
                       <th className="h-14 border-r border-[#d7dce3] px-4 text-left text-[15px] font-semibold">Tax Type</th>
                       <th className="h-14 border-r border-[#d7dce3] px-4 text-left text-[15px] font-semibold">Rate(%)</th>
-                      <th className="h-14 px-4 text-left text-[15px] font-semibold" />
+                      {canEdit && <th className="h-14 px-4 text-left text-[15px] font-semibold" />}
                     </tr>
                   </thead>
                   <tbody>
@@ -785,16 +798,18 @@ export default function SettingsPage() {
                         <td className="h-16 px-5">{rate.name}</td>
                         <td className="h-16 px-5">{rate.taxType || rate.type || 'GST'}</td>
                         <td className="h-16 px-5">{rate.rate}</td>
-                        <td className="h-16 px-5">
-                          <div className="flex gap-8">
-                            <button type="button" onClick={() => editTaxRate(index)} className="text-slate-900" title="Edit tax">
-                              <Edit2 size={17} />
-                            </button>
-                            <button type="button" onClick={() => deleteTaxRate(index)} className="text-slate-900" title="Delete tax">
-                              <Trash2 size={17} />
-                            </button>
-                          </div>
-                        </td>
+                        {canEdit && (
+                          <td className="h-16 px-5">
+                            <div className="flex gap-8">
+                              <button type="button" onClick={() => editTaxRate(index)} className="text-slate-900" title="Edit tax">
+                                <Edit2 size={17} />
+                              </button>
+                              <button type="button" onClick={() => deleteTaxRate(index)} className="text-slate-900" title="Delete tax">
+                                <Trash2 size={17} />
+                              </button>
+                            </div>
+                          </td>
+                        )}
                       </tr>
                     ))}
                   </tbody>

@@ -2,9 +2,11 @@ import { Router } from 'express';
 import { protect } from '../middleware/auth.js';
 import Party from '../models/Party.js';
 import PartyGroup from '../models/PartyGroup.js';
+import PartyVisit from '../models/PartyVisit.js';
 import Settings from '../models/Settings.js';
 
 const router = Router();
+const FIELD_ROLES = ['sales_executive', 'sales_rep'];
 
 const PARTY_SETTING_DEFAULTS = {
   route: true,
@@ -41,6 +43,13 @@ const normalizeSettings = (type, value = {}) => {
     ...value,
     customFields,
   };
+};
+
+const denyFieldWrite = (req, res, next) => {
+  if (FIELD_ROLES.includes(req.user?.role)) {
+    return res.status(403).json({ message: 'You can view this section but cannot create or change records.' });
+  }
+  return next();
 };
 
 // GET all with filters
@@ -86,7 +95,7 @@ router.get('/settings/:type', protect, async (req, res) => {
   } catch (e) { res.status(500).json({ message: e.message }); }
 });
 
-router.put('/settings/:type', protect, async (req, res) => {
+router.put('/settings/:type', protect, denyFieldWrite, async (req, res) => {
   try {
     let settings = await Settings.findOne();
     if (!settings) settings = await Settings.create({});
@@ -100,7 +109,7 @@ router.put('/settings/:type', protect, async (req, res) => {
   } catch (e) { res.status(500).json({ message: e.message }); }
 });
 
-router.post('/groups', protect, async (req, res) => {
+router.post('/groups', protect, denyFieldWrite, async (req, res) => {
   try {
     const name = String(req.body.name || '').trim();
     if (!name) return res.status(400).json({ message: 'Group name is required' });
@@ -113,7 +122,7 @@ router.post('/groups', protect, async (req, res) => {
   } catch (e) { res.status(500).json({ message: e.message }); }
 });
 
-router.put('/groups/:id', protect, async (req, res) => {
+router.put('/groups/:id', protect, denyFieldWrite, async (req, res) => {
   try {
     const name = String(req.body.name || '').trim();
     if (!name) return res.status(400).json({ message: 'Group name is required' });
@@ -123,11 +132,61 @@ router.put('/groups/:id', protect, async (req, res) => {
   } catch (e) { res.status(500).json({ message: e.message }); }
 });
 
-router.delete('/groups/:id', protect, async (req, res) => {
+router.delete('/groups/:id', protect, denyFieldWrite, async (req, res) => {
   try {
     const group = await PartyGroup.findByIdAndUpdate(req.params.id, { isActive: false }, { new: true });
     if (!group) return res.status(404).json({ message: 'Group not found' });
     res.json({ message: 'Group deleted' });
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+router.get('/visits', protect, async (req, res) => {
+  try {
+    const { search, status, partyType } = req.query;
+    const filter = {};
+    if (FIELD_ROLES.includes(req.user.role)) filter.createdBy = req.user._id;
+    if (status) filter.status = status;
+    if (partyType) filter.partyType = partyType;
+    if (search) {
+      filter.$or = [
+        { partyName: new RegExp(search, 'i') },
+        { region: new RegExp(search, 'i') },
+        { city: new RegExp(search, 'i') },
+        { area: new RegExp(search, 'i') },
+        { comment: new RegExp(search, 'i') },
+      ];
+    }
+    const visits = await PartyVisit.find(filter)
+      .populate('party', 'name type group phone address')
+      .populate('createdBy', 'name email')
+      .sort('-createdAt');
+    res.json(visits);
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+router.post('/visits', protect, async (req, res) => {
+  try {
+    const body = req.body || {};
+    const party = body.party ? await Party.findById(body.party).select('name type address') : null;
+    const visit = await PartyVisit.create({
+      party: party?._id,
+      partyType: body.partyType || party?.type || 'customer',
+      partyName: body.partyName || party?.name || '',
+      region: body.region || '',
+      city: body.city || party?.address?.city || '',
+      area: body.area || '',
+      comment: body.comment || '',
+      status: body.status || 'active',
+      location: body.location || {},
+      selfie: body.selfie || '',
+      partyPhoto: body.partyPhoto || '',
+      createdBy: req.user._id,
+    });
+    const populated = await visit.populate([
+      { path: 'party', select: 'name type group phone address' },
+      { path: 'createdBy', select: 'name email' },
+    ]);
+    res.status(201).json(populated);
   } catch (e) { res.status(500).json({ message: e.message }); }
 });
 
@@ -139,21 +198,21 @@ router.get('/:id', protect, async (req, res) => {
   } catch (e) { res.status(500).json({ message: e.message }); }
 });
 
-router.post('/', protect, async (req, res) => {
+router.post('/', protect, denyFieldWrite, async (req, res) => {
   try {
     const party = await Party.create(req.body);
     res.status(201).json(party);
   } catch (e) { res.status(500).json({ message: e.message }); }
 });
 
-router.put('/:id', protect, async (req, res) => {
+router.put('/:id', protect, denyFieldWrite, async (req, res) => {
   try {
     const party = await Party.findByIdAndUpdate(req.params.id, req.body, { new: true });
     res.json(party);
   } catch (e) { res.status(500).json({ message: e.message }); }
 });
 
-router.delete('/:id', protect, async (req, res) => {
+router.delete('/:id', protect, denyFieldWrite, async (req, res) => {
   try {
     await Party.findByIdAndUpdate(req.params.id, { isActive: false });
     res.json({ message: 'Party deactivated' });

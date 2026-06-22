@@ -5,6 +5,7 @@ import api from '../../api/axios';
 import SlidePanel from '../../components/common/SlidePanel';
 import { formatCurrency } from '../../utils/helpers';
 import { exportToExcel } from '../../utils/exportExcel';
+import { useAuth } from '../../context/AuthContext';
 
 const UNITS = ['Pcs', 'Kg', 'G', 'Ltr', 'Ml', 'Box', 'Bag', 'Dozen', 'Carton', 'Meter', 'Pack', 'Nos', 'Case'];
 const GST_RATES = [0, 3, 5, 12, 18, 28];
@@ -70,6 +71,8 @@ function CurrencyField({ value, onChange, placeholder }) {
 }
 
 export default function Items() {
+  const { user } = useAuth();
+  const isFieldReadOnly = ['sales_executive', 'sales_rep'].includes(user?.role);
   const [searchParams, setSearchParams] = useSearchParams();
   const [items, setItems] = useState([]);
   const [warehouses, setWarehouses] = useState([]);
@@ -117,11 +120,11 @@ export default function Items() {
   };
 
   useEffect(() => {
-    if (searchParams.get('create') === '1') {
+    if (searchParams.get('create') === '1' && !isFieldReadOnly) {
       openAdd();
       setSearchParams({}, { replace: true });
     }
-  }, [searchParams, setSearchParams]);
+  }, [searchParams, setSearchParams, isFieldReadOnly]);
 
   const openEdit = (item) => {
     setEditing(item);
@@ -186,10 +189,14 @@ export default function Items() {
       <div className="so-titlebar">
         <h1 className="so-title">Items</h1>
         <div className="so-actions">
-          <button type="button" className="so-icon-btn !w-[46px] !h-7" title="Settings"><Settings size={16} /></button>
+          {!isFieldReadOnly && <button type="button" className="so-icon-btn !w-[46px] !h-7" title="Settings"><Settings size={16} /></button>}
           <button type="button" onClick={() => exportToExcel(items, 'items', EXPORT_COLS)} className="so-btn-secondary text-sm"><Download size={15} /> Export</button>
-          <button type="button" className="so-btn-secondary border-[#174bb8] text-[#174bb8] text-sm"><Upload size={15} /> Import</button>
-          <button type="button" onClick={openAdd} className="so-btn-primary text-sm"><Plus size={15} /> New</button>
+          {!isFieldReadOnly && (
+            <>
+              <button type="button" className="so-btn-secondary border-[#174bb8] text-[#174bb8] text-sm"><Upload size={15} /> Import</button>
+              <button type="button" onClick={openAdd} className="so-btn-primary text-sm"><Plus size={15} /> New</button>
+            </>
+          )}
         </div>
       </div>
 
@@ -233,7 +240,7 @@ export default function Items() {
                   <th>Item Name</th>
                   <th>Stock</th>
                   <th>Purchase Price</th>
-                  <th className="w-24"></th>
+                  {!isFieldReadOnly && <th className="w-24"></th>}
                 </tr>
               </thead>
               <tbody>
@@ -243,12 +250,14 @@ export default function Items() {
                     <td className="font-medium">{item.name}</td>
                     <td>{item.stock ?? 0} {item.unit}</td>
                     <td>{item.purchasePrice ? formatCurrency(item.purchasePrice) : '-'}</td>
-                    <td>
-                      <div className="flex justify-end gap-1">
-                        <button type="button" onClick={() => openEdit(item)} className="so-icon-btn"><Edit2 size={15} /></button>
-                        <button type="button" onClick={() => remove(item._id)} className="so-icon-btn"><Trash2 size={15} /></button>
-                      </div>
-                    </td>
+                    {!isFieldReadOnly && (
+                      <td>
+                        <div className="flex justify-end gap-1">
+                          <button type="button" onClick={() => openEdit(item)} className="so-icon-btn"><Edit2 size={15} /></button>
+                          <button type="button" onClick={() => remove(item._id)} className="so-icon-btn"><Trash2 size={15} /></button>
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>

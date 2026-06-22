@@ -8,6 +8,7 @@ import SlidePanel from '../../components/common/SlidePanel';
 import useMasterData from '../../hooks/useMasterData';
 import { exportToExcel } from '../../utils/exportExcel';
 import { formatCurrency } from '../../utils/helpers';
+import { useAuth } from '../../context/AuthContext';
 
 const PAGE_SIZE = 30;
 
@@ -324,6 +325,9 @@ export default function SalesTransactionPage({
   settingsMode = 'standard',
   createEnabled = true,
 }) {
+  const { user } = useAuth();
+  const isFieldReadOnly = ['sales_executive', 'sales_rep'].includes(user?.role);
+  const canCreateRecord = createEnabled && !isFieldReadOnly;
   const [searchParams, setSearchParams] = useSearchParams();
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -455,14 +459,14 @@ export default function SalesTransactionPage({
   };
 
   useEffect(() => {
-    if (searchParams.get('create') === '1' && createEnabled) {
+    if (searchParams.get('create') === '1' && canCreateRecord) {
       openCreate();
       setSearchParams({}, { replace: true });
     }
-  }, [searchParams, setSearchParams, createEnabled]);
+  }, [searchParams, setSearchParams, canCreateRecord]);
 
   const saveCreate = async () => {
-    if (!createEndpoint || !createEnabled) {
+    if (!createEndpoint || !canCreateRecord) {
       setPanelOpen(false);
       return;
     }
@@ -517,11 +521,11 @@ export default function SalesTransactionPage({
         <h1 className="so-title">{title}</h1>
         <div className="so-actions">
           <span className="h-7 px-3 rounded-[2px] bg-[#1687d9] text-white text-sm flex items-center">Total : ₹ {totalAmount.toLocaleString('en-IN')}</span>
-          <button type="button" onClick={() => setSettingsOpen(true)} className="so-icon-btn !w-[58px] !h-9" title="Settings"><Settings size={18} /></button>
+          {!isFieldReadOnly && <button type="button" onClick={() => setSettingsOpen(true)} className="so-icon-btn !w-[58px] !h-9" title="Settings"><Settings size={18} /></button>}
           <button type="button" onClick={() => exportToExcel(filtered, type, buildExportCols())} className="so-btn-secondary text-sm">
             Export As <ChevronDown size={15} />
           </button>
-          <button type="button" onClick={openCreate} className="so-btn-primary text-sm">{createLabel}</button>
+          {canCreateRecord && <button type="button" onClick={openCreate} className="so-btn-primary text-sm">{createLabel}</button>}
         </div>
       </div>
 

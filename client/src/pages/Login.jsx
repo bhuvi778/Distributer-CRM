@@ -1,13 +1,18 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Mail, Lock, Eye, EyeOff, Layers, ArrowRight, ArrowLeft, ChevronRight } from 'lucide-react';
+import { ArrowRight, Eye, EyeOff, Lock, Mail } from 'lucide-react';
 import { getDefaultPath } from '../config/roles';
-import { PORTALS, getPortalById } from '../config/portals';
 import { useAuth } from '../context/AuthContext';
 
+const DEMO_CREDENTIALS = [
+  { role: 'Super Admin', email: 'superadmin@saleson.com', password: 'password123' },
+  { role: 'Admin', email: 'admin@saleson.com', password: 'password123' },
+  { role: 'Manufacturer', email: 'manufacturer@saleson.com', password: 'password123' },
+  { role: 'Distributor', email: 'distributor@saleson.com', password: 'password123' },
+  { role: 'Sales Executive', email: 'sales@saleson.com', password: 'password123' },
+];
+
 export default function Login() {
-  const [step, setStep] = useState('portals'); // 'portals' | 'login'
-  const [selectedPortalId, setSelectedPortalId] = useState(null);
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -15,218 +20,102 @@ export default function Login() {
   const { login, user, loading: authLoading, defaultPath } = useAuth();
   const navigate = useNavigate();
 
-  const portal = getPortalById(selectedPortalId);
-  const PortalIcon = portal?.icon;
-
   useEffect(() => {
     if (!authLoading && user) navigate(defaultPath, { replace: true });
   }, [authLoading, user, defaultPath, navigate]);
 
-  const selectPortal = (portalId) => {
-    const p = getPortalById(portalId);
-    setSelectedPortalId(portalId);
-    setForm({ email: '', password: '' });
-    setError('');
-    setStep('login');
-  };
-
-  const useDemoLogin = () => {
-    if (!portal?.demo) return;
-    setForm({ email: portal.demo.email, password: portal.demo.password });
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async (event) => {
+    event.preventDefault();
     setLoading(true);
     setError('');
     try {
       const userData = await login(form.email, form.password);
-      if (portal && userData.role !== portal.role && userData.role !== 'admin' && userData.role !== 'super_admin') {
-        setError(`Yeh account ${portal.label} ke liye nahi hai. Sahi portal select karein.`);
-        setLoading(false);
-        return;
-      }
-      navigate(getDefaultPath(userData));
+      navigate(getDefaultPath(userData), { replace: true });
     } catch (err) {
-      const msg = err.response?.data?.message;
-      if (!err.response) {
-        setError('Server se connect nahi ho pa raha. Backend check karein (port 5010).');
-      } else {
-        setError(msg || 'Invalid email or password');
-      }
+      setError(!err.response ? 'Server se connect nahi ho pa raha. Backend check karein.' : err.response?.data?.message || 'Invalid email or password');
     } finally {
       setLoading(false);
     }
   };
 
-  /* ── Step 1: Portal picker (SalesOn style) ── */
-  if (step === 'portals') {
-    return (
-      <div className="min-h-screen bg-surface-100 flex flex-col">
-        <header className="bg-white border-b border-surface-200 px-6 py-4">
-          <div className="max-w-4xl mx-auto flex items-center gap-3">
-            <div className="w-8 h-8 bg-[#1e88e5] rounded flex items-center justify-center">
-              <Layers size={16} className="text-white" />
-            </div>
-            <div>
-              <p className="font-semibold text-[#1e88e5] text-lg leading-none">DistriFlow</p>
-              <p className="text-[11px] text-surface-500 mt-0.5">Sales & Distribution Management</p>
-            </div>
-          </div>
-        </header>
+  const applyDemo = (demo) => {
+    setForm({ email: demo.email, password: demo.password });
+    setError('');
+  };
 
-        <main className="flex-1 flex items-center justify-center p-6">
-          <div className="w-full max-w-3xl">
-            <div className="text-center mb-8">
-              <h1 className="text-2xl font-semibold text-surface-900">Select Your Portal</h1>
-              <p className="text-sm text-surface-500 mt-2">Apna role choose karein — har portal alag dashboard aur modules dikhata hai</p>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {PORTALS.map((p) => {
-                const Icon = p.icon;
-                return (
-                  <button
-                    key={p.id}
-                    type="button"
-                    onClick={() => selectPortal(p.id)}
-                    className="text-left p-4 bg-white border border-surface-200 rounded-lg hover:border-brand-600 hover:shadow-card-hover transition-all group"
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className={`w-10 h-10 ${p.accent} rounded-md flex items-center justify-center flex-shrink-0`}>
-                        <Icon size={18} className="text-white" />
-                      </div>
-                      <ChevronRight size={16} className="text-surface-300 group-hover:text-brand-600 mt-1 transition-colors" />
-                    </div>
-                    <p className="font-semibold text-surface-900 mt-3 text-sm">{p.label}</p>
-                    <p className="text-xs text-surface-500 mt-0.5">{p.tagline}</p>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </main>
-
-        <footer className="text-center py-4 text-xs text-surface-400 border-t border-surface-200 bg-white">
-          © 2026 DistriFlow · GST-ready · Tally integration
-        </footer>
-      </div>
-    );
-  }
-
-  /* ── Step 2: Portal-specific login ── */
   return (
-    <div className="min-h-screen flex bg-surface-100">
-      <div className={`hidden lg:flex lg:w-[440px] xl:w-[480px] ${portal?.accent || 'bg-brand-950'} flex-col justify-between p-10 flex-shrink-0`}>
-        <div>
-          <button
-            type="button"
-            onClick={() => { setStep('portals'); setError(''); }}
-            className="flex items-center gap-1.5 text-white/70 hover:text-white text-sm mb-8 transition-colors"
-          >
-            <ArrowLeft size={16} /> Change portal
-          </button>
-
-          <div className="flex items-center gap-3 mb-8">
-            <div className="w-10 h-10 bg-white/15 rounded-md flex items-center justify-center">
-              {PortalIcon && <PortalIcon size={20} className="text-white" />}
-            </div>
-            <div>
-              <p className="font-semibold text-white text-lg leading-none">{portal?.label}</p>
-              <p className="text-[11px] text-white/60 mt-0.5 uppercase tracking-widest">{portal?.tagline}</p>
-            </div>
+    <div className="min-h-screen bg-[#eef1f5] flex items-center justify-center px-5 py-8">
+      <div className="grid w-full max-w-[980px] grid-cols-[1fr_360px] overflow-hidden rounded-[4px] bg-white shadow-[0_20px_55px_rgba(15,23,42,0.16)]">
+        <section className="px-10 py-11">
+          <div className="mb-10 flex items-center gap-3">
+            <span className="so-logo-mark" aria-hidden="true" />
+            <span className="text-[30px] font-semibold leading-none text-[#174bb8]">SalesOn</span>
           </div>
 
-          <p className="text-white/80 text-sm leading-relaxed">{portal?.description}</p>
-
-          <ul className="mt-8 space-y-3">
-            {portal?.features.map((f) => (
-              <li key={f} className="flex items-center gap-2 text-sm text-white/70">
-                <span className="w-1.5 h-1.5 rounded-full bg-accent-400 flex-shrink-0" />
-                {f}
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        <p className="text-xs text-white/40">Demo: {portal?.demo.email}</p>
-      </div>
-
-      <div className="flex-1 flex items-center justify-center p-6 sm:p-10">
-        <div className="w-full max-w-[380px]">
-          <button
-            type="button"
-            onClick={() => { setStep('portals'); setError(''); }}
-            className="lg:hidden flex items-center gap-1.5 text-surface-500 hover:text-surface-800 text-sm mb-6"
-          >
-            <ArrowLeft size={16} /> Change portal
-          </button>
-
-          <div className="flex items-center gap-2 mb-6 lg:hidden">
-            <div className={`w-8 h-8 ${portal?.accent} rounded-md flex items-center justify-center`}>
-              {PortalIcon && <PortalIcon size={14} className="text-white" />}
-            </div>
-            <div>
-              <p className="font-semibold text-surface-900 text-sm">{portal?.label}</p>
-              <p className="text-xs text-surface-500">{portal?.tagline}</p>
-            </div>
-          </div>
-
-          <h2 className="text-xl font-semibold text-surface-900">Sign in</h2>
-          <p className="text-sm text-surface-500 mt-1 mb-5">{portal?.label} credentials enter karein</p>
+          <h1 className="text-[30px] font-semibold text-[#111827]">Sign in</h1>
+          <p className="mt-2 text-[15px] text-[#667085]">Apni ID aur password daalein. Role credentials se automatically detect hoga.</p>
 
           {error && (
-            <div className="mb-4 px-3 py-2.5 bg-red-50 border border-red-200 text-red-700 rounded-md text-sm">{error}</div>
+            <div className="mt-6 rounded-[3px] border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>
           )}
 
-          <button
-            type="button"
-            onClick={useDemoLogin}
-            className="mb-4 w-full py-2 text-sm font-medium text-brand-800 bg-brand-50 border border-brand-200 rounded-md hover:bg-brand-100 transition-colors"
-          >
-            Use Demo Login ({portal?.demo.name})
-          </button>
-
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="mt-7 max-w-[430px] space-y-5">
             <div>
-              <label className="label">Email</label>
+              <label className="so-label">Email / User ID</label>
               <div className="relative">
-                <Mail size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-surface-400" />
+                <Mail size={17} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#98a2b3]" />
                 <input
                   type="email"
                   value={form.email}
-                  onChange={(e) => setForm({ ...form, email: e.target.value })}
-                  className="input-field !pl-9"
-                  placeholder={portal?.demo.email}
+                  onChange={(event) => setForm((prev) => ({ ...prev, email: event.target.value }))}
+                  className="so-input w-full !pl-10"
+                  placeholder="Enter email"
                   required
                   autoComplete="email"
                 />
               </div>
             </div>
             <div>
-              <label className="label">Password</label>
+              <label className="so-label">Password</label>
               <div className="relative">
-                <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-surface-400" />
+                <Lock size={17} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#98a2b3]" />
                 <input
                   type={showPass ? 'text' : 'password'}
                   value={form.password}
-                  onChange={(e) => setForm({ ...form, password: e.target.value })}
-                  className="input-field !pl-9 !pr-10"
+                  onChange={(event) => setForm((prev) => ({ ...prev, password: event.target.value }))}
+                  className="so-input w-full !pl-10 !pr-10"
+                  placeholder="Enter password"
                   required
                   autoComplete="current-password"
                 />
-                <button type="button" onClick={() => setShowPass(!showPass)} className="absolute right-3 top-1/2 -translate-y-1/2 text-surface-400">
-                  {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
+                <button type="button" onClick={() => setShowPass((value) => !value)} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#98a2b3]">
+                  {showPass ? <EyeOff size={17} /> : <Eye size={17} />}
                 </button>
               </div>
             </div>
-            <button type="submit" disabled={loading} className="btn-primary w-full !py-2.5">
-              {loading ? 'Signing in...' : (
-                <span className="flex items-center justify-center gap-2">Sign In to {portal?.label?.replace(' Portal', '')} <ArrowRight size={16} /></span>
-              )}
+            <button type="submit" disabled={loading} className="so-btn-primary h-11 w-full justify-center text-base">
+              {loading ? 'Signing in...' : <span className="flex items-center justify-center gap-2">Login <ArrowRight size={17} /></span>}
             </button>
           </form>
-        </div>
+        </section>
+
+        <aside className="border-l border-[#e3e8ef] bg-[#f8fafc] px-5 py-7">
+          <h2 className="text-[18px] font-semibold text-[#111827]">Demo Credentials</h2>
+          <div className="mt-5 space-y-3">
+            {DEMO_CREDENTIALS.map((demo) => (
+              <button
+                key={demo.role}
+                type="button"
+                onClick={() => applyDemo(demo)}
+                className="w-full rounded-[3px] border border-[#d7dce5] bg-white px-3 py-3 text-left hover:border-[#174bb8] hover:bg-[#f2f6ff]"
+              >
+                <div className="text-[14px] font-semibold text-[#174bb8]">{demo.role}</div>
+                <div className="mt-1 text-[12px] text-[#475467]">{demo.email}</div>
+                <div className="text-[12px] text-[#98a2b3]">{demo.password}</div>
+              </button>
+            ))}
+          </div>
+        </aside>
       </div>
     </div>
   );

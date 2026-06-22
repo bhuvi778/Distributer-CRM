@@ -9,6 +9,14 @@ import CreditNote from '../models/CreditNote.js';
 import Settings from '../models/Settings.js';
 
 const router = Router();
+const FIELD_ROLES = ['sales_executive', 'sales_rep'];
+
+const denyFieldWrite = (req, res, next) => {
+  if (FIELD_ROLES.includes(req.user?.role)) {
+    return res.status(403).json({ message: 'This role can view sales records but cannot create or change them' });
+  }
+  return next();
+};
 
 const TRANSACTION_SETTING_DEFAULTS = {
   vehicleNo: false,
@@ -57,7 +65,7 @@ router.get('/settings/:type', protect, async (req, res) => {
   } catch (e) { res.status(500).json({ message: e.message }); }
 });
 
-router.put('/settings/:type', protect, async (req, res) => {
+router.put('/settings/:type', protect, denyFieldWrite, async (req, res) => {
   try {
     let settings = await Settings.findOne();
     if (!settings) settings = await Settings.create({});
@@ -86,14 +94,14 @@ router.get('/estimates', protect, async (req, res) => {
   } catch (e) { res.status(500).json({ message: e.message }); }
 });
 
-router.post('/estimates', protect, async (req, res) => {
+router.post('/estimates', protect, denyFieldWrite, async (req, res) => {
   try {
     const est = await Estimate.create({ ...req.body, createdBy: req.user._id });
     res.status(201).json(est);
   } catch (e) { res.status(500).json({ message: e.message }); }
 });
 
-router.put('/estimates/:id', protect, async (req, res) => {
+router.put('/estimates/:id', protect, denyFieldWrite, async (req, res) => {
   try {
     const est = await Estimate.findByIdAndUpdate(req.params.id, req.body, { new: true });
     res.json(est);
@@ -101,7 +109,7 @@ router.put('/estimates/:id', protect, async (req, res) => {
 });
 
 // Convert estimate to order
-router.post('/estimates/:id/convert', protect, async (req, res) => {
+router.post('/estimates/:id/convert', protect, denyFieldWrite, async (req, res) => {
   try {
     const est = await Estimate.findById(req.params.id);
     if (!est) return res.status(404).json({ message: 'Estimate not found' });
@@ -137,14 +145,14 @@ router.get('/delivery-challans', protect, async (req, res) => {
   } catch (e) { res.status(500).json({ message: e.message }); }
 });
 
-router.post('/delivery-challans', protect, async (req, res) => {
+router.post('/delivery-challans', protect, denyFieldWrite, async (req, res) => {
   try {
     const challan = await DeliveryChallan.create(req.body);
     res.status(201).json(challan);
   } catch (e) { res.status(500).json({ message: e.message }); }
 });
 
-router.put('/delivery-challans/:id', protect, async (req, res) => {
+router.put('/delivery-challans/:id', protect, denyFieldWrite, async (req, res) => {
   try {
     if (req.body.status === 'delivered') req.body.deliveredDate = new Date();
     if (req.body.status === 'dispatched') req.body.dispatchDate = new Date();
@@ -170,14 +178,14 @@ router.get('/returns', protect, async (req, res) => {
   } catch (e) { res.status(500).json({ message: e.message }); }
 });
 
-router.post('/returns', protect, async (req, res) => {
+router.post('/returns', protect, denyFieldWrite, async (req, res) => {
   try {
     const ret = await SalesReturn.create(req.body);
     res.status(201).json(ret);
   } catch (e) { res.status(500).json({ message: e.message }); }
 });
 
-router.put('/returns/:id', protect, async (req, res) => {
+router.put('/returns/:id', protect, denyFieldWrite, async (req, res) => {
   try {
     if (req.body.status === 'approved' || req.body.status === 'rejected') {
       req.body.processedBy = req.user._id;
@@ -206,14 +214,14 @@ router.get('/credit-notes', protect, async (req, res) => {
   } catch (e) { res.status(500).json({ message: e.message }); }
 });
 
-router.post('/credit-notes', protect, async (req, res) => {
+router.post('/credit-notes', protect, denyFieldWrite, async (req, res) => {
   try {
     const note = await CreditNote.create({ ...req.body, createdBy: req.user._id });
     res.status(201).json(note);
   } catch (e) { res.status(500).json({ message: e.message }); }
 });
 
-router.put('/credit-notes/:id', protect, async (req, res) => {
+router.put('/credit-notes/:id', protect, denyFieldWrite, async (req, res) => {
   try {
     const note = await CreditNote.findByIdAndUpdate(req.params.id, req.body, { new: true });
     res.json(note);

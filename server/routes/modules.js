@@ -2,17 +2,26 @@ import { Router } from 'express';
 import { protect } from '../middleware/auth.js';
 import * as ctrl from '../controllers/moduleController.js';
 
+const FIELD_ROLES = ['sales_executive', 'sales_rep'];
+
+const denyFieldWrite = (req, res, next) => {
+  if (FIELD_ROLES.includes(req.user?.role)) {
+    return res.status(403).json({ message: 'This role can view this module but cannot create or change records' });
+  }
+  return next();
+};
+
 const crudRoutes = (router, controller, extras = {}) => {
   router.get('/', protect, controller.getAll);
   router.get('/:id', protect, controller.getOne);
-  router.post('/', protect, extras.create || controller.create);
-  router.put('/:id', protect, extras.update || controller.update);
-  router.delete('/:id', protect, controller.remove);
+  router.post('/', protect, denyFieldWrite, extras.create || controller.create);
+  router.put('/:id', protect, denyFieldWrite, extras.update || controller.update);
+  router.delete('/:id', protect, denyFieldWrite, controller.remove);
   Object.entries(extras).forEach(([path, handler]) => {
     if (path !== 'create' && path !== 'update') {
-      router.post(`/${path}`, protect, handler);
+      router.post(`/${path}`, protect, denyFieldWrite, handler);
       router.get(`/${path}`, protect, handler);
-      router.put(`/${path}/:id`, protect, handler);
+      router.put(`/${path}/:id`, protect, denyFieldWrite, handler);
     }
   });
 };
@@ -41,7 +50,7 @@ router.use('/invoices', invoices);
 
 const payments = Router();
 crudRoutes(payments, ctrl.paymentCtrl, { create: ctrl.createPayment });
-payments.put('/approve/:id', protect, ctrl.approvePayment);
+payments.put('/approve/:id', protect, denyFieldWrite, ctrl.approvePayment);
 router.use('/payments', payments);
 
 const inventory = Router();
@@ -89,7 +98,7 @@ router.use('/support', support);
 
 router.get('/settings', protect, ctrl.settingsCtrl.get);
 router.put('/settings', protect, ctrl.settingsCtrl.update);
-router.post('/settings/tally-sync', protect, ctrl.settingsCtrl.syncTally);
+router.post('/settings/tally-sync', protect, denyFieldWrite, ctrl.settingsCtrl.syncTally);
 router.get('/reports/outstanding', protect, ctrl.getOutstandingReport);
 
 export default router;

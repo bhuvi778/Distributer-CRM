@@ -4,6 +4,7 @@ import api from '../../api/axios';
 import SlidePanel from '../../components/common/SlidePanel';
 import { exportToExcel } from '../../utils/exportExcel';
 import useIndiaLocations from '../../hooks/useIndiaLocations';
+import { useAuth } from '../../context/AuthContext';
 
 const emptyForm = {
   name: '',
@@ -52,6 +53,8 @@ const parseCSV = (text) => {
 };
 
 export default function Warehouses() {
+  const { user } = useAuth();
+  const isFieldReadOnly = ['sales_executive', 'sales_rep'].includes(user?.role);
   const [warehouses, setWarehouses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -133,9 +136,13 @@ export default function Warehouses() {
       <div className="so-titlebar">
         <h1 className="so-title">Warehouse</h1>
         <div className="so-actions">
-          <button type="button" onClick={() => importRef.current?.click()} className="so-btn-secondary border-[#174bb8] text-[#174bb8] text-sm"><Upload size={15} /> Import</button>
-          <button type="button" onClick={openAdd} className="so-btn-primary text-sm"><Plus size={15} /> New</button>
-          <input ref={importRef} type="file" accept=".csv,text/csv" className="hidden" onChange={handleImport} />
+          {!isFieldReadOnly && (
+            <>
+              <button type="button" onClick={() => importRef.current?.click()} className="so-btn-secondary border-[#174bb8] text-[#174bb8] text-sm"><Upload size={15} /> Import</button>
+              <button type="button" onClick={openAdd} className="so-btn-primary text-sm"><Plus size={15} /> New</button>
+              <input ref={importRef} type="file" accept=".csv,text/csv" className="hidden" onChange={handleImport} />
+            </>
+          )}
         </div>
       </div>
 
@@ -171,7 +178,7 @@ export default function Warehouses() {
                 <td>
                   <div className="flex justify-center gap-2">
                     <button type="button" onClick={() => exportOne(warehouse)} className="so-icon-btn !w-8 !h-8"><Download size={14} /></button>
-                    <button type="button" onClick={() => openEdit(warehouse)} className="so-icon-btn !w-8 !h-8"><Edit2 size={14} /></button>
+                    {!isFieldReadOnly && <button type="button" onClick={() => openEdit(warehouse)} className="so-icon-btn !w-8 !h-8"><Edit2 size={14} /></button>}
                   </div>
                 </td>
               </tr>

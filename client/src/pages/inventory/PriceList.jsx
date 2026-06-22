@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Archive, Edit2, Plus } from 'lucide-react';
 import api from '../../api/axios';
+import { useAuth } from '../../context/AuthContext';
 
 const PRICING_TYPES = [
   { value: 'fixed', label: 'Fixed' },
@@ -23,6 +24,8 @@ const emptyForm = {
 const toNumber = (value) => Number(value || 0);
 
 export default function PriceList() {
+  const { user } = useAuth();
+  const isFieldReadOnly = ['sales_executive', 'sales_rep'].includes(user?.role);
   const [searchParams, setSearchParams] = useSearchParams();
   const [lists, setLists] = useState([]);
   const [products, setProducts] = useState([]);
@@ -56,11 +59,11 @@ export default function PriceList() {
   };
 
   useEffect(() => {
-    if (searchParams.get('create') === '1') {
+    if (searchParams.get('create') === '1' && !isFieldReadOnly) {
       openAdd();
       setSearchParams({}, { replace: true });
     }
-  }, [searchParams, setSearchParams]);
+  }, [searchParams, setSearchParams, isFieldReadOnly]);
 
   const openEdit = (list) => {
     setEditing(list);
@@ -180,7 +183,7 @@ export default function PriceList() {
     <div className="so-module-page">
       <div className="so-titlebar">
         <h1 className="so-title">Price Lists</h1>
-        <button type="button" onClick={openAdd} className="so-btn-primary text-sm"><Plus size={15} /> New</button>
+        {!isFieldReadOnly && <button type="button" onClick={openAdd} className="so-btn-primary text-sm"><Plus size={15} /> New</button>}
       </div>
 
       <div className="so-table-panel !mt-2.5 min-h-[445px]">
@@ -190,7 +193,7 @@ export default function PriceList() {
               <th>Name</th>
               <th>Description</th>
               <th>Type</th>
-              <th className="w-[64px]"></th>
+              {!isFieldReadOnly && <th className="w-[64px]"></th>}
             </tr>
           </thead>
           <tbody>
@@ -210,7 +213,7 @@ export default function PriceList() {
                 <td>{list.name}</td>
                 <td>{list.notes || '-'}</td>
                 <td className="capitalize">{list.pricingType || 'fixed'}</td>
-                <td><button type="button" onClick={() => openEdit(list)} className="so-icon-btn"><Edit2 size={15} /></button></td>
+                {!isFieldReadOnly && <td><button type="button" onClick={() => openEdit(list)} className="so-icon-btn"><Edit2 size={15} /></button></td>}
               </tr>
             ))}
           </tbody>

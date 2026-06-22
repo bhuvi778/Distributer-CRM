@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Archive } from 'lucide-react';
 import api from '../../api/axios';
+import { useAuth } from '../../context/AuthContext';
 
 const STATUS_COLOR = {
   draft: 'so-badge-info',
@@ -22,6 +23,8 @@ const emptyForm = () => ({
 });
 
 export default function TransferOrders() {
+  const { user } = useAuth();
+  const isFieldReadOnly = ['sales_executive', 'sales_rep'].includes(user?.role);
   const [transfers, setTransfers] = useState([]);
   const [products, setProducts] = useState([]);
   const [warehouses, setWarehouses] = useState([]);
@@ -184,7 +187,7 @@ export default function TransferOrders() {
     <div className="so-module-page">
       <div className="so-titlebar">
         <h1 className="so-title">Transfer Orders</h1>
-        <button type="button" onClick={openCreate} className="so-btn-primary text-sm">Create Transfer Order</button>
+        {!isFieldReadOnly && <button type="button" onClick={openCreate} className="so-btn-primary text-sm">Create Transfer Order</button>}
       </div>
 
       <div className="so-filterbar">
@@ -201,7 +204,7 @@ export default function TransferOrders() {
               <th>To</th>
               <th>Comment</th>
               <th>Status</th>
-              <th className="w-[120px]"></th>
+              {!isFieldReadOnly && <th className="w-[120px]"></th>}
             </tr>
           </thead>
           <tbody>
@@ -224,10 +227,12 @@ export default function TransferOrders() {
                 <td>{transfer.toWarehouse}</td>
                 <td>{transfer.notes || '-'}</td>
                 <td><span className={`so-badge ${STATUS_COLOR[transfer.status] || ''}`}>{transfer.status?.replace('_', ' ')}</span></td>
-                <td>
-                  {transfer.status === 'draft' && <button type="button" onClick={() => updateStatus(transfer._id, 'in_transit')} className="so-btn-secondary text-sm">Dispatch</button>}
-                  {transfer.status === 'in_transit' && <button type="button" onClick={() => updateStatus(transfer._id, 'completed')} className="so-btn-primary text-sm">Mark Received</button>}
-                </td>
+                {!isFieldReadOnly && (
+                  <td>
+                    {transfer.status === 'draft' && <button type="button" onClick={() => updateStatus(transfer._id, 'in_transit')} className="so-btn-secondary text-sm">Dispatch</button>}
+                    {transfer.status === 'in_transit' && <button type="button" onClick={() => updateStatus(transfer._id, 'completed')} className="so-btn-primary text-sm">Mark Received</button>}
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>

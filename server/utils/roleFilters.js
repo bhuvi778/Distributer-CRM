@@ -32,6 +32,7 @@ export async function buildRoleFilter(user, resource) {
           return {};
       }
 
+    case 'sales_executive':
     case 'sales_rep':
       switch (resource) {
         case 'outlets':

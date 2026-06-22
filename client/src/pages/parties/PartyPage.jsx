@@ -6,6 +6,7 @@ import SlidePanel from '../../components/common/SlidePanel';
 import { exportToExcel } from '../../utils/exportExcel';
 import useIndiaLocations from '../../hooks/useIndiaLocations';
 import useMasterData from '../../hooks/useMasterData';
+import { useAuth } from '../../context/AuthContext';
 
 const PAGE_SIZE = 30;
 const TITLE_BY_TYPE = {
@@ -57,6 +58,27 @@ const VISIT_SETTINGS_DEFAULTS = {
   customFields: [],
 };
 
+const VISIT_PARTY_TYPES = [
+  { value: 'customer', label: 'Customer' },
+  { value: 'distributor', label: 'Distributor' },
+  { value: 'super_stocker', label: 'Super Stocker' },
+  { value: 'supplier', label: 'Supplier' },
+];
+
+const emptyVisitForm = () => ({
+  partyType: 'customer',
+  party: '',
+  partyName: '',
+  region: '',
+  city: '',
+  area: '',
+  comment: '',
+  status: 'active',
+  location: { lat: '', lng: '' },
+  selfie: '',
+  partyPhoto: '',
+});
+
 const EXPORT_COLS = [
   { key: 'name', label: 'Name', accessor: 'name' },
   { key: 'code', label: 'Code', accessor: 'code' },
@@ -73,6 +95,8 @@ const displayRange = (count, page) => {
   const start = (page - 1) * PAGE_SIZE + 1;
   return `${start} - ${Math.min(page * PAGE_SIZE, count)} of ${count}`;
 };
+
+const formatVisitDate = (date) => (date ? new Date(date).toLocaleDateString('en-GB') : '-');
 
 const normalize = (party, type) => ({
   ...emptyForm(type),
@@ -186,10 +210,13 @@ function PartySettingsModal({
 }
 
 export default function PartyPage({ type, title }) {
+  const { user } = useAuth();
+  const isFieldReadOnly = ['sales_executive', 'sales_rep'].includes(user?.role);
   const [searchParams, setSearchParams] = useSearchParams();
   const pageTitle = title || TITLE_BY_TYPE[type] || 'Party';
   const isVisited = type === 'visited';
   const [parties, setParties] = useState([]);
+  const [visitParties, setVisitParties] = useState([]);
   const [groups, setGroups] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -199,28 +226,40 @@ export default function PartyPage({ type, title }) {
   const [dateRange] = useState('22/06/2026 - 22/06/2026');
   const [page, setPage] = useState(1);
   const [panelOpen, setPanelOpen] = useState(false);
+  const [visitPanelOpen, setVisitPanelOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [partySettings, setPartySettings] = useState(isVisited ? VISIT_SETTINGS_DEFAULTS : PARTY_SETTINGS_DEFAULTS);
   const [newCustomField, setNewCustomField] = useState('');
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(emptyForm(type));
+  const [visitForm, setVisitForm] = useState(emptyVisitForm());
   const importRef = useRef(null);
+  const selfieRef = useRef(null);
+  const partyPhotoRef = useRef(null);
   const { states, cities, loadingCities } = useIndiaLocations(form.address?.state);
   const { routes } = useMasterData();
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [partyRes, groupRes] = await Promise.all([
-        api.get('/parties', { params: { type, search: search || undefined } }),
-        api.get('/parties/groups').catch(() => ({ data: [] })),
-      ]);
+      const requests = isVisited
+        ? [
+          api.get('/parties/visits', { params: { search: search || undefined } }),
+          api.get('/parties/groups').catch(() => ({ data: [] })),
+          Promise.all(VISIT_PARTY_TYPES.map((item) => api.get('/parties', { params: { type: item.value } }).catch(() => ({ data: [] })))),
+        ]
+        : [
+          api.get('/parties', { params: { type, search: search || undefined } }),
+          api.get('/parties/groups').catch(() => ({ data: [] })),
+        ];
+      const [partyRes, groupRes, partyLists] = await Promise.all(requests);
       setParties(Array.isArray(partyRes.data) ? partyRes.data : []);
       setGroups(Array.isArray(groupRes.data) ? groupRes.data : []);
+      if (isVisited) setVisitParties((partyLists || []).flatMap((res) => res.data || []));
     } finally {
       setLoading(false);
     }
-  }, [type, search]);
+  }, [type, search, isVisited]);
 
   const loadSettings = useCallback(async () => {
     try {
@@ -237,16 +276,21 @@ export default function PartyPage({ type, title }) {
 
   const filtered = useMemo(() => {
     return parties.filter((party) => {
+      if (isVisited) {
+        const matchesStatus = !statusFilter || party.status === statusFilter;
+        const matchesVisited = !visitedBy || party.createdBy?.name === visitedBy;
+        return matchesStatus && matchesVisited;
+      }
       const matchesStatus = !statusFilter || party.status === statusFilter || (statusFilter === 'active' && party.isActive !== false);
       const matchesVisited = !visitedBy || party.assignedTo?.name === visitedBy;
       const matchesGroup = !groupFilter || party.group === groupFilter;
       return matchesStatus && matchesVisited && matchesGroup;
     });
-  }, [parties, statusFilter, visitedBy, groupFilter]);
+  }, [parties, statusFilter, visitedBy, groupFilter, isVisited]);
 
   const displayed = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const visitors = [...new Set(parties.map((party) => party.assignedTo?.name).filter(Boolean))];
+  const visitors = [...new Set(parties.map((party) => (isVisited ? party.createdBy?.name : party.assignedTo?.name)).filter(Boolean))];
 
   const f = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
   const fa = (key, value) => setForm((prev) => ({
@@ -272,19 +316,21 @@ export default function PartyPage({ type, title }) {
   const getFormCustomField = (label) => (form.customFields || []).find((field) => field.name === label)?.value || '';
 
   const openAdd = () => {
+    if (isFieldReadOnly) return;
     setEditing(null);
     setForm(emptyForm(type));
     setPanelOpen(true);
   };
 
   useEffect(() => {
-    if (searchParams.get('create') === '1' && !isVisited) {
+    if (searchParams.get('create') === '1' && !isVisited && !isFieldReadOnly) {
       openAdd();
       setSearchParams({}, { replace: true });
     }
-  }, [searchParams, setSearchParams, type, isVisited]);
+  }, [searchParams, setSearchParams, type, isVisited, isFieldReadOnly]);
 
   const openEdit = (party) => {
+    if (isFieldReadOnly) return;
     setEditing(party);
     setForm(normalize(party, type));
     setPanelOpen(true);
@@ -351,21 +397,90 @@ export default function PartyPage({ type, title }) {
     alert('Import template support will use the existing parties CSV flow.');
   };
 
+  const vf = (key, value) => setVisitForm((prev) => ({ ...prev, [key]: value }));
+
+  const captureLocation = () => {
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setVisitForm((prev) => ({
+          ...prev,
+          location: {
+            lat: Number(position.coords.latitude.toFixed(6)),
+            lng: Number(position.coords.longitude.toFixed(6)),
+          },
+        }));
+      },
+      () => undefined,
+      { enableHighAccuracy: true, timeout: 8000 }
+    );
+  };
+
+  const openVisitPanel = () => {
+    setVisitForm(emptyVisitForm());
+    setVisitPanelOpen(true);
+    captureLocation();
+  };
+
+  const handleVisitPartyChange = (partyId) => {
+    const party = visitParties.find((item) => item._id === partyId);
+    setVisitForm((prev) => ({
+      ...prev,
+      party: partyId,
+      partyType: party?.type || prev.partyType,
+      partyName: party?.name || '',
+      city: party?.address?.city || party?.billingAddress?.city || prev.city,
+    }));
+  };
+
+  const fileToDataUrl = (file) => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+
+  const handleVisitImage = async (event, key) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    vf(key, await fileToDataUrl(file));
+    event.target.value = '';
+  };
+
+  const saveVisit = async () => {
+    if (!visitForm.party && !visitForm.partyName.trim()) return alert('Party is required');
+    if (partySettings.photoMandatory && !visitForm.selfie) return alert('Selfie is mandatory');
+    try {
+      await api.post('/parties/visits', visitForm);
+      setVisitPanelOpen(false);
+      load();
+    } catch (e) {
+      alert(e.response?.data?.message || 'Error saving visit');
+    }
+  };
+
   return (
     <div className="so-module-page so-party-page">
       <div className="so-titlebar">
         <h1 className="so-title">{pageTitle}</h1>
         <div className="so-actions">
           {isVisited ? (
-            <button type="button" onClick={openSettings} className="so-icon-btn !w-[46px] !h-9" title="Settings"><Settings size={18} /></button>
+            <>
+              {isFieldReadOnly && <button type="button" onClick={openVisitPanel} className="so-btn-primary text-sm"><Plus size={15} /> Mark Visit</button>}
+              {!isFieldReadOnly && <button type="button" onClick={openSettings} className="so-icon-btn !w-[46px] !h-9" title="Settings"><Settings size={18} /></button>}
+            </>
           ) : (
             <>
-              <button type="button" className="so-icon-btn !w-[58px] !h-9 border-[#174bb8] text-[#174bb8]" title="Map"><MapPin size={20} /></button>
-              <button type="button" onClick={openSettings} className="so-icon-btn !w-[58px] !h-9" title="Settings"><Settings size={18} /></button>
-              <button type="button" onClick={() => exportToExcel(filtered, `${type}_parties`, EXPORT_COLS)} className="so-btn-secondary text-sm"><Download size={15} /> Export</button>
-              <button type="button" onClick={() => importRef.current?.click()} className="so-btn-secondary border-[#174bb8] text-[#174bb8] text-sm"><Upload size={15} /> Import</button>
-              <button type="button" onClick={openAdd} className="so-btn-primary text-sm"><Plus size={15} /> New</button>
-              <input ref={importRef} type="file" accept=".csv,text/csv" className="hidden" onChange={handleImport} />
+              {!isFieldReadOnly && (
+                <>
+                  <button type="button" className="so-icon-btn !w-[58px] !h-9 border-[#174bb8] text-[#174bb8]" title="Map"><MapPin size={20} /></button>
+                  <button type="button" onClick={openSettings} className="so-icon-btn !w-[58px] !h-9" title="Settings"><Settings size={18} /></button>
+                  <button type="button" onClick={() => exportToExcel(filtered, `${type}_parties`, EXPORT_COLS)} className="so-btn-secondary text-sm"><Download size={15} /> Export</button>
+                  <button type="button" onClick={() => importRef.current?.click()} className="so-btn-secondary border-[#174bb8] text-[#174bb8] text-sm"><Upload size={15} /> Import</button>
+                  <button type="button" onClick={openAdd} className="so-btn-primary text-sm"><Plus size={15} /> New</button>
+                  <input ref={importRef} type="file" accept=".csv,text/csv" className="hidden" onChange={handleImport} />
+                </>
+              )}
             </>
           )}
         </div>
@@ -417,30 +532,59 @@ export default function PartyPage({ type, title }) {
         </div>
       ) : (
         <div className="so-table-panel">
-          <table className="so-table">
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Mobile</th>
-                <th>Group</th>
-                <th>City</th>
-                <th>Status</th>
-                <th className="w-[70px]"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {displayed.map((party) => (
-                <tr key={party._id}>
-                  <td>{party.name}</td>
-                  <td>{party.phone || '-'}</td>
-                  <td>{party.group || '-'}</td>
-                  <td>{party.address?.city || party.billingAddress?.city || '-'}</td>
-                  <td><span className={`so-badge ${party.isActive !== false ? 'so-badge-success' : 'so-badge-danger'}`}>{party.status || 'active'}</span></td>
-                  <td><button type="button" onClick={() => openEdit(party)} className="so-icon-btn"><Edit2 size={14} /></button></td>
+          {isVisited ? (
+            <table className="so-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Party</th>
+                  <th>Type</th>
+                  <th>Region</th>
+                  <th>Location</th>
+                  <th>Comment</th>
+                  <th>Visited By</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {displayed.map((visit) => (
+                  <tr key={visit._id}>
+                    <td>{formatVisitDate(visit.createdAt)}</td>
+                    <td>{visit.party?.name || visit.partyName || '-'}</td>
+                    <td>{VISIT_PARTY_TYPES.find((item) => item.value === visit.partyType)?.label || visit.partyType || '-'}</td>
+                    <td>{visit.region || visit.city || '-'}</td>
+                    <td>{visit.location?.lat && visit.location?.lng ? `${visit.location.lat}, ${visit.location.lng}` : '-'}</td>
+                    <td>{visit.comment || '-'}</td>
+                    <td>{visit.createdBy?.name || '-'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <table className="so-table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Mobile</th>
+                  <th>Group</th>
+                  <th>City</th>
+                  <th>Status</th>
+                  {!isFieldReadOnly && <th className="w-[70px]"></th>}
+                </tr>
+              </thead>
+              <tbody>
+                {displayed.map((party) => (
+                  <tr key={party._id}>
+                    <td>{party.name}</td>
+                    <td>{party.phone || '-'}</td>
+                    <td>{party.group || '-'}</td>
+                    <td>{party.address?.city || party.billingAddress?.city || '-'}</td>
+                    <td><span className={`so-badge ${party.isActive !== false ? 'so-badge-success' : 'so-badge-danger'}`}>{party.status || 'active'}</span></td>
+                    {!isFieldReadOnly && <td><button type="button" onClick={() => openEdit(party)} className="so-icon-btn"><Edit2 size={14} /></button></td>}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       )}
 
@@ -553,6 +697,79 @@ export default function PartyPage({ type, title }) {
                 <input className="so-input w-full" value={getFormCustomField(field.label)} onChange={(event) => setFormCustomField(field.label, event.target.value)} />
               </div>
             ))}
+          </div>
+        </div>
+      </SlidePanel>
+
+      <SlidePanel
+        open={visitPanelOpen}
+        onClose={() => setVisitPanelOpen(false)}
+        title="Mark Visit"
+        width="w-[600px]"
+        hideClose
+        bodyClassName="p-4"
+        headerActions={(
+          <>
+            <button type="button" onClick={saveVisit} className="so-btn-primary text-sm min-w-[67px]">Save</button>
+            <button type="button" onClick={() => setVisitPanelOpen(false)} className="text-sm px-3">Cancel</button>
+          </>
+        )}
+      >
+        <div className="space-y-4">
+          <div className="so-form-section-title">Visit Details</div>
+          <div className="so-form-grid">
+            <div>
+              <label className="so-label">Party Type *</label>
+              <select className="so-input so-select w-full" value={visitForm.partyType} onChange={(event) => vf('partyType', event.target.value)}>
+                {VISIT_PARTY_TYPES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="so-label">Party *</label>
+              <select className="so-input so-select w-full" value={visitForm.party} onChange={(event) => handleVisitPartyChange(event.target.value)}>
+                <option value="">Select Party</option>
+                {visitParties.filter((party) => party.type === visitForm.partyType).map((party) => (
+                  <option key={party._id} value={party._id}>{party.name}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="so-label">Region</label>
+              <input className="so-input w-full" value={visitForm.region} onChange={(event) => vf('region', event.target.value)} placeholder="Region" />
+            </div>
+            <div>
+              <label className="so-label">City</label>
+              <input className="so-input w-full" value={visitForm.city} onChange={(event) => vf('city', event.target.value)} placeholder="City" />
+            </div>
+            <div>
+              <label className="so-label">Area</label>
+              <input className="so-input w-full" value={visitForm.area} onChange={(event) => vf('area', event.target.value)} placeholder="Area" />
+            </div>
+            <div>
+              <label className="so-label">Location</label>
+              <div className="flex gap-2">
+                <input className="so-input flex-1" value={visitForm.location.lat && visitForm.location.lng ? `${visitForm.location.lat}, ${visitForm.location.lng}` : ''} readOnly placeholder="Current location" />
+                <button type="button" onClick={captureLocation} className="so-btn-secondary text-sm">GPS</button>
+              </div>
+            </div>
+            <div className="col-span-2">
+              <label className="so-label">Comment</label>
+              <textarea className="so-input w-full min-h-[72px]" value={visitForm.comment} onChange={(event) => vf('comment', event.target.value)} placeholder={partySettings.commentOptions || 'Visit comment'} />
+            </div>
+            <div>
+              <label className="so-label">Selfie{partySettings.photoMandatory ? ' *' : ''}</label>
+              <button type="button" onClick={() => selfieRef.current?.click()} className="so-upload-box w-full h-[118px]">
+                {visitForm.selfie ? <img src={visitForm.selfie} alt="" className="h-full w-full object-cover" /> : <span>+ Upload</span>}
+              </button>
+              <input ref={selfieRef} type="file" accept="image/*" className="hidden" onChange={(event) => handleVisitImage(event, 'selfie')} />
+            </div>
+            <div>
+              <label className="so-label">Customer Photo</label>
+              <button type="button" onClick={() => partyPhotoRef.current?.click()} className="so-upload-box w-full h-[118px]">
+                {visitForm.partyPhoto ? <img src={visitForm.partyPhoto} alt="" className="h-full w-full object-cover" /> : <span>+ Upload</span>}
+              </button>
+              <input ref={partyPhotoRef} type="file" accept="image/*" className="hidden" onChange={(event) => handleVisitImage(event, 'partyPhoto')} />
+            </div>
           </div>
         </div>
       </SlidePanel>

@@ -7,6 +7,14 @@ import PriceList from '../models/PriceList.js';
 import TransferOrder from '../models/TransferOrder.js';
 
 const router = Router();
+const FIELD_ROLES = ['sales_executive', 'sales_rep'];
+
+const denyFieldWrite = (req, res, next) => {
+  if (FIELD_ROLES.includes(req.user?.role)) {
+    return res.status(403).json({ message: 'You can view inventory but cannot create or change records.' });
+  }
+  return next();
+};
 
 // ─── ITEMS (Products) ───────────────────────────────────────────
 router.get('/items', protect, async (req, res) => {
@@ -35,7 +43,7 @@ router.get('/items', protect, async (req, res) => {
   } catch (e) { res.status(500).json({ message: e.message }); }
 });
 
-router.post('/items', protect, async (req, res) => {
+router.post('/items', protect, denyFieldWrite, async (req, res) => {
   try {
     const item = await Product.create(req.body);
     const warehouse = req.body.warehouse || 'Main';
@@ -44,7 +52,7 @@ router.post('/items', protect, async (req, res) => {
   } catch (e) { res.status(500).json({ message: e.message }); }
 });
 
-router.put('/items/:id', protect, async (req, res) => {
+router.put('/items/:id', protect, denyFieldWrite, async (req, res) => {
   try {
     const item = await Product.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
     if (req.body.warehouse && req.body.stock !== undefined) {
@@ -58,7 +66,7 @@ router.put('/items/:id', protect, async (req, res) => {
   } catch (e) { res.status(500).json({ message: e.message }); }
 });
 
-router.delete('/items/:id', protect, async (req, res) => {
+router.delete('/items/:id', protect, denyFieldWrite, async (req, res) => {
   try {
     await Product.findByIdAndUpdate(req.params.id, { isActive: false });
     res.json({ message: 'Item deactivated' });
@@ -66,7 +74,7 @@ router.delete('/items/:id', protect, async (req, res) => {
 });
 
 // Stock adjustment
-router.post('/items/:id/adjust-stock', protect, async (req, res) => {
+router.post('/items/:id/adjust-stock', protect, denyFieldWrite, async (req, res) => {
   try {
     const { warehouse, adjustmentType, adjustQty, comments } = req.body;
     const product = await Product.findById(req.params.id);
@@ -111,21 +119,21 @@ router.get('/warehouses', protect, async (req, res) => {
   } catch (e) { res.status(500).json({ message: e.message }); }
 });
 
-router.post('/warehouses', protect, async (req, res) => {
+router.post('/warehouses', protect, denyFieldWrite, async (req, res) => {
   try {
     const wh = await Warehouse.create(req.body);
     res.status(201).json(wh);
   } catch (e) { res.status(500).json({ message: e.message }); }
 });
 
-router.put('/warehouses/:id', protect, async (req, res) => {
+router.put('/warehouses/:id', protect, denyFieldWrite, async (req, res) => {
   try {
     const wh = await Warehouse.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
     res.json(wh);
   } catch (e) { res.status(500).json({ message: e.message }); }
 });
 
-router.post('/warehouses/import', protect, async (req, res) => {
+router.post('/warehouses/import', protect, denyFieldWrite, async (req, res) => {
   try {
     const rows = Array.isArray(req.body.rows) ? req.body.rows : [];
     if (!rows.length) return res.status(400).json({ message: 'No warehouse rows found' });
@@ -159,7 +167,7 @@ router.post('/warehouses/import', protect, async (req, res) => {
   } catch (e) { res.status(500).json({ message: e.message }); }
 });
 
-router.delete('/warehouses/:id', protect, async (req, res) => {
+router.delete('/warehouses/:id', protect, denyFieldWrite, async (req, res) => {
   try {
     await Warehouse.findByIdAndUpdate(req.params.id, { isActive: false });
     res.json({ message: 'Warehouse deactivated' });
@@ -182,21 +190,21 @@ router.get('/price-lists', protect, async (req, res) => {
   } catch (e) { res.status(500).json({ message: e.message }); }
 });
 
-router.post('/price-lists', protect, async (req, res) => {
+router.post('/price-lists', protect, denyFieldWrite, async (req, res) => {
   try {
     const list = await PriceList.create(req.body);
     res.status(201).json(list);
   } catch (e) { res.status(500).json({ message: e.message }); }
 });
 
-router.put('/price-lists/:id', protect, async (req, res) => {
+router.put('/price-lists/:id', protect, denyFieldWrite, async (req, res) => {
   try {
     const list = await PriceList.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
     res.json(list);
   } catch (e) { res.status(500).json({ message: e.message }); }
 });
 
-router.post('/price-lists/import', protect, async (req, res) => {
+router.post('/price-lists/import', protect, denyFieldWrite, async (req, res) => {
   try {
     const rows = Array.isArray(req.body.rows) ? req.body.rows : [];
     if (!rows.length) return res.status(400).json({ message: 'No price list rows found' });
@@ -228,7 +236,7 @@ router.post('/price-lists/import', protect, async (req, res) => {
   } catch (e) { res.status(500).json({ message: e.message }); }
 });
 
-router.delete('/price-lists/:id', protect, async (req, res) => {
+router.delete('/price-lists/:id', protect, denyFieldWrite, async (req, res) => {
   try {
     await PriceList.findByIdAndUpdate(req.params.id, { isActive: false });
     res.json({ message: 'Price list deactivated' });
@@ -251,14 +259,14 @@ router.get('/transfers', protect, async (req, res) => {
   } catch (e) { res.status(500).json({ message: e.message }); }
 });
 
-router.post('/transfers', protect, async (req, res) => {
+router.post('/transfers', protect, denyFieldWrite, async (req, res) => {
   try {
     const transfer = await TransferOrder.create({ ...req.body, requestedBy: req.user._id });
     res.status(201).json(transfer);
   } catch (e) { res.status(500).json({ message: e.message }); }
 });
 
-router.put('/transfers/:id', protect, async (req, res) => {
+router.put('/transfers/:id', protect, denyFieldWrite, async (req, res) => {
   try {
     if (req.body.status === 'completed' && !req.body.approvedBy) {
       req.body.approvedBy = req.user._id;

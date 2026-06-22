@@ -57,7 +57,9 @@ export default function TopBar() {
   const createRef = useRef(null);
   const profileRef = useRef(null);
   const navigate = useNavigate();
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
+  const isFieldReadOnly = ['sales_executive', 'sales_rep'].includes(user?.role);
+  const canUseQuickCreate = !isFieldReadOnly;
 
   useOutsideClose(createRef, () => setCreateOpen(false));
   useOutsideClose(profileRef, () => setProfileOpen(false));
@@ -70,37 +72,39 @@ export default function TopBar() {
 
   return (
     <header className="sticky top-0 z-30 h-[52px] bg-white border-b border-[#e4e4e4] shadow-[0_2px_8px_rgba(0,0,0,0.10)] flex items-center justify-end px-3 gap-7">
-      <div ref={createRef} className="relative">
-        <button
-          type="button"
-          onClick={() => {
-            setCreateOpen((value) => !value);
-            setProfileOpen(false);
-          }}
-          className="h-8 w-[34px] rounded-[2px] bg-[#174bb8] text-white flex items-center justify-center hover:bg-[#123f9e]"
-          title="Add"
-        >
-          <Plus size={21} strokeWidth={1.8} />
-        </button>
-        {createOpen && (
-          <div className="absolute right-[-82px] top-[38px] z-50 w-[206px] bg-white py-2 shadow-[0_14px_34px_rgba(15,23,42,0.18)]">
-            {createSections.map((section, sectionIndex) => (
-              <div key={`create-section-${sectionIndex}`} className={sectionIndex > 0 ? 'border-t border-[#eeeeee] pt-2 mt-2' : ''}>
-                {section.map(([label, path]) => (
-                  <Link
-                    key={label}
-                    to={path}
-                    onClick={() => setCreateOpen(false)}
-                    className="block px-6 py-[9px] text-[16px] leading-5 text-[#2a2a2a] no-underline hover:bg-[#f5f7fb]"
-                  >
-                    {label}
-                  </Link>
-                ))}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+      {canUseQuickCreate && (
+        <div ref={createRef} className="relative">
+          <button
+            type="button"
+            onClick={() => {
+              setCreateOpen((value) => !value);
+              setProfileOpen(false);
+            }}
+            className="h-8 w-[34px] rounded-[2px] bg-[#174bb8] text-white flex items-center justify-center hover:bg-[#123f9e]"
+            title="Add"
+          >
+            <Plus size={21} strokeWidth={1.8} />
+          </button>
+          {createOpen && (
+            <div className="absolute right-[-82px] top-[38px] z-50 w-[206px] bg-white py-2 shadow-[0_14px_34px_rgba(15,23,42,0.18)]">
+              {createSections.map((section, sectionIndex) => (
+                <div key={`create-section-${sectionIndex}`} className={sectionIndex > 0 ? 'border-t border-[#eeeeee] pt-2 mt-2' : ''}>
+                  {section.map(([label, path]) => (
+                    <Link
+                      key={label}
+                      to={path}
+                      onClick={() => setCreateOpen(false)}
+                      className="block px-6 py-[9px] text-[16px] leading-5 text-[#2a2a2a] no-underline hover:bg-[#f5f7fb]"
+                    >
+                      {label}
+                    </Link>
+                  ))}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       <a
         href="https://wa.me/918092856577"
@@ -133,13 +137,15 @@ export default function TopBar() {
             >
               My Account
             </Link>
-            <Link
-              to="/app/subscription"
-              onClick={() => setProfileOpen(false)}
-              className="block px-5 py-[11px] text-[16px] text-[#2a2a2a] no-underline hover:bg-[#f5f7fb]"
-            >
-              Subscription
-            </Link>
+            {!isFieldReadOnly && (
+              <Link
+                to="/app/subscription"
+                onClick={() => setProfileOpen(false)}
+                className="block px-5 py-[11px] text-[16px] text-[#2a2a2a] no-underline hover:bg-[#f5f7fb]"
+              >
+                Subscription
+              </Link>
+            )}
             <button
               type="button"
               onClick={handleLogout}

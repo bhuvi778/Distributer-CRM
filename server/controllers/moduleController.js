@@ -84,6 +84,10 @@ export const checkIn = async (req, res) => {
       date: today,
       checkIn: new Date(),
       checkInLocation: req.body.location,
+      selfie: req.body.selfie || '',
+      odoIn: req.body.odoIn || '',
+      odoInImage: req.body.odoInImage || '',
+      images: [req.body.selfie, req.body.odoInImage].filter(Boolean),
       status: 'present',
     };
     record = record
@@ -107,6 +111,12 @@ export const checkOut = async (req, res) => {
     const hours = (checkOut - record.checkIn) / (1000 * 60 * 60);
     record.checkOut = checkOut;
     record.checkOutLocation = req.body.location;
+    record.odoOut = req.body.odoOut || record.odoOut;
+    record.odoOutImage = req.body.odoOutImage || record.odoOutImage;
+    record.images = [
+      ...(record.images || []),
+      req.body.odoOutImage,
+    ].filter(Boolean);
     record.workingHours = Math.round(hours * 100) / 100;
     record.overtime = hours > 8 ? Math.round((hours - 8) * 100) / 100 : 0;
     record.undertime = hours < 8 ? Math.round((8 - hours) * 100) / 100 : 0;
@@ -205,7 +215,7 @@ export const getLiveLocations = async (req, res) => {
       return { ...doc, trackingStatus };
     };
 
-    if (!['super_admin', 'admin', 'manager', 'sales_executive'].includes(req.user.role) && !req.user.permissions?.includes('view_all_tracking')) {
+    if (!['super_admin', 'admin', 'manager'].includes(req.user.role) && !req.user.permissions?.includes('view_all_tracking')) {
       const self = await User.findById(req.user._id).select('name email role lastLocation assignedRoutes territory');
       return res.json(self ? [withStatus(self)] : []);
     }

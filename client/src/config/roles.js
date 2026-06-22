@@ -123,14 +123,12 @@ export const ROLE_DEFAULT_MODULES = {
     'targets','support','settings','employees',
   ],
   sales_executive: [
-    'dashboard',
+    'dashboard','tracking',
+    'inventory-items','inventory-warehouses','inventory-pricelist','inventory-transfers',
     'parties-customers','parties-distributors','parties-superstockers','parties-suppliers','parties-visited','parties-groups',
-    'inventory-items',
-    'sales-estimates','sales-orders','sales-invoices','sales-delivery','sales-returns','sales-credit-note',
-    'attendance',
-    'targets',
-    'expenses',
-    'payments','support','settings',
+    'sales-estimates','sales-orders','sales-invoices','sales-delivery','sales-returns',
+    'purchase-invoices',
+    'attendance','settings',
   ],
   sales_rep: [
     'dashboard',
@@ -216,7 +214,7 @@ const ACTION_ROLE_DEFAULTS = {
   manage_routes: ['super_admin', 'admin'],
   manage_employees: ['super_admin', 'admin'],
   manage_admins: ['super_admin'],
-  view_all_tracking: ['super_admin', 'admin'],
+  view_all_tracking: ['super_admin', 'admin', 'manager'],
   view_all_data: ['super_admin'],
 };
 

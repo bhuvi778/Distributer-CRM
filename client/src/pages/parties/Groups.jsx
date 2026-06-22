@@ -1,10 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Archive, Edit2, Plus, Search, X } from 'lucide-react';
 import api from '../../api/axios';
+import { useAuth } from '../../context/AuthContext';
 
 const emptyForm = { name: '' };
 
 export default function Groups() {
+  const { user } = useAuth();
+  const isFieldReadOnly = ['sales_executive', 'sales_rep'].includes(user?.role);
   const [groups, setGroups] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -59,7 +62,7 @@ export default function Groups() {
     <div className="so-module-page">
       <div className="so-titlebar">
         <h1 className="so-title">Groups</h1>
-        <button type="button" onClick={openCreate} className="so-btn-primary text-sm"><Plus size={15} /> New</button>
+        {!isFieldReadOnly && <button type="button" onClick={openCreate} className="so-btn-primary text-sm"><Plus size={15} /> New</button>}
       </div>
 
       <div className="so-filterbar">
@@ -74,7 +77,7 @@ export default function Groups() {
           <thead>
             <tr>
               <th>Name</th>
-              <th className="w-[90px]"></th>
+              {!isFieldReadOnly && <th className="w-[90px]"></th>}
             </tr>
           </thead>
           <tbody>
@@ -92,11 +95,13 @@ export default function Groups() {
             {filtered.map((group) => (
               <tr key={group._id || group.name}>
                 <td>{group.name}</td>
-                <td className="text-right">
-                  {!group.isLegacy && (
+                {!isFieldReadOnly && (
+                  <td className="text-right">
+                    {!group.isLegacy && (
                     <button type="button" onClick={() => openEdit(group)} className="so-icon-btn"><Edit2 size={14} /></button>
-                  )}
-                </td>
+                    )}
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>

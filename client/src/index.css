@@ -615,6 +615,15 @@
     font-size: 11px;
     line-height: 1;
   }
+  .so-upload-box {
+    border: 1px dashed #cfd6e0;
+    background: #fff;
+    color: #202733;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
 
   /* Legacy/custom pages: make existing page structures follow the SalesOn shell */
   .so-legacy-page {

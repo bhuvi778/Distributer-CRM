@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { BarChart3, FileText, Map, MapPin, Navigation, Plus, RefreshCw, Satellite, ShoppingCart, Users } from 'lucide-react';
 import api from '../api/axios';
 import { formatDateTime } from '../utils/helpers';
+import { useAuth } from '../context/AuthContext';
 
 const statusMeta = {
   live: { label: 'Live', dot: 'bg-green-500', text: 'text-green-700', bg: '#43a047' },
@@ -21,6 +22,8 @@ function Stat({ label, value, color }) {
 }
 
 export default function LiveTracking() {
+  const { user } = useAuth();
+  const isFieldReadOnly = ['sales_executive', 'sales_rep'].includes(user?.role);
   const [reps, setReps] = useState([]);
   const [loading, setLoading] = useState(true);
   const [mapView, setMapView] = useState('map');
@@ -61,7 +64,7 @@ export default function LiveTracking() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5">
         <div>
           <h1 className="text-base font-semibold text-[#333]">Live Location Tracking</h1>
-          <p className="text-xs text-[#757575] mt-0.5">Real-time field team location, status and quick actions</p>
+          <p className="text-xs text-[#757575] mt-0.5">{isFieldReadOnly ? 'Your current live location and status' : 'Real-time field team location, status and quick actions'}</p>
         </div>
         <div className="flex items-center gap-2">
           <div className="inline-flex bg-white border border-[#e0e0e0] rounded overflow-hidden">
@@ -84,15 +87,17 @@ export default function LiveTracking() {
         <Stat label="People Offline" value={stats.offline} color="#757575" />
       </div>
 
-      <div className="bg-white border border-[#e0e0e0] rounded-lg p-3 mb-4">
-        <p className="text-xs font-semibold text-[#555] mb-2">Quick Create</p>
-        <div className="flex flex-wrap gap-2">
-          <Link to="/app/sales/orders" className="so-btn-primary flex items-center gap-1.5 text-xs"><ShoppingCart size={13} /> Sales Order</Link>
-          <Link to="/app/sales/invoices" className="so-btn-secondary flex items-center gap-1.5 text-xs"><FileText size={13} /> Invoice</Link>
-          <Link to="/app/parties/customers" className="so-btn-secondary flex items-center gap-1.5 text-xs"><Plus size={13} /> Customer</Link>
-          <Link to="/app/reports" className="so-btn-secondary flex items-center gap-1.5 text-xs"><BarChart3 size={13} /> Report</Link>
+      {!isFieldReadOnly && (
+        <div className="bg-white border border-[#e0e0e0] rounded-lg p-3 mb-4">
+          <p className="text-xs font-semibold text-[#555] mb-2">Quick Create</p>
+          <div className="flex flex-wrap gap-2">
+            <Link to="/app/sales/orders" className="so-btn-primary flex items-center gap-1.5 text-xs"><ShoppingCart size={13} /> Sales Order</Link>
+            <Link to="/app/sales/invoices" className="so-btn-secondary flex items-center gap-1.5 text-xs"><FileText size={13} /> Invoice</Link>
+            <Link to="/app/parties/customers" className="so-btn-secondary flex items-center gap-1.5 text-xs"><Plus size={13} /> Customer</Link>
+            <Link to="/app/reports" className="so-btn-secondary flex items-center gap-1.5 text-xs"><BarChart3 size={13} /> Report</Link>
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         <div className="lg:col-span-2 bg-white border border-[#e0e0e0] rounded-lg overflow-hidden">
@@ -126,7 +131,7 @@ export default function LiveTracking() {
         <div className="bg-white border border-[#e0e0e0] rounded-lg p-4">
           <div className="flex items-center gap-2 mb-4">
             <Users size={18} className="text-[#1e88e5]" />
-            <h3 className="font-semibold text-sm">Team Location ({reps.length})</h3>
+            <h3 className="font-semibold text-sm">{isFieldReadOnly ? 'My Location' : `Team Location (${reps.length})`}</h3>
           </div>
           <div className="space-y-3 max-h-[480px] overflow-y-auto">
             {reps.length === 0 ? (
