@@ -25,6 +25,9 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (token === 'demo-session') {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      setUser(null);
       setLoading(false);
       return;
     }
@@ -43,14 +46,6 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     const normalizedEmail = email.trim().toLowerCase();
-    const demoUser = getDemoUser(normalizedEmail, password);
-
-    if (demoUser) {
-      localStorage.setItem('token', 'demo-session');
-      localStorage.setItem('user', JSON.stringify(demoUser));
-      setUser(demoUser);
-      return demoUser;
-    }
 
     try {
       const { data } = await api.post('/auth/login', {
@@ -62,7 +57,13 @@ export const AuthProvider = ({ children }) => {
       setUser(data);
       return data;
     } catch (error) {
-      throw error;
+      const demoUser = getDemoUser(normalizedEmail, password);
+      if (!demoUser || error.response) throw error;
+
+      localStorage.setItem('token', 'demo-session');
+      localStorage.setItem('user', JSON.stringify(demoUser));
+      setUser(demoUser);
+      return demoUser;
     }
   };
 
