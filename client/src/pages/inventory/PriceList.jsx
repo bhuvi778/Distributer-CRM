@@ -99,31 +99,31 @@ export default function PriceList() {
         <div className="so-titlebar">
           <h1 className="so-title">Create Price List</h1>
           <div className="so-actions">
-            <button type="button" onClick={save} className="so-btn-primary text-lg min-w-[82px]">Save</button>
-            <button type="button" onClick={() => setCreateMode(false)} className="min-h-9 px-5 rounded-[3px] bg-[#66717d] text-white text-lg font-semibold">Cancel</button>
+            <button type="button" onClick={save} className="so-btn-primary text-sm min-w-[66px]">Save</button>
+            <button type="button" onClick={() => setCreateMode(false)} className="min-h-7 px-4 rounded-[3px] bg-[#66717d] text-white text-sm font-semibold">Cancel</button>
           </div>
         </div>
 
-        <div className="grid grid-cols-[39%_61%] min-h-[calc(100vh-134px)] bg-white">
-          <div className="px-12 pt-16">
-            <div className="grid grid-cols-[110px_1fr] gap-x-3 gap-y-9 items-start max-w-[548px]">
-              <label className="text-lg text-right pt-2"><span className="text-red-500">*</span> Name:</label>
+        <div className="grid grid-cols-[39%_61%] min-h-[calc(100vh-107px)] bg-white">
+          <div className="px-10 pt-12">
+            <div className="grid grid-cols-[88px_1fr] gap-x-2.5 gap-y-7 items-start max-w-[438px]">
+              <label className="text-sm text-right pt-2"><span className="text-red-500">*</span> Name:</label>
               <input className="so-input w-full" value={form.name} onChange={(e) => f('name', e.target.value)} />
 
-              <label className="text-lg text-right pt-2">Description:</label>
-              <textarea className="so-input w-full min-h-[68px]" value={form.notes || ''} onChange={(e) => f('notes', e.target.value)} />
+              <label className="text-sm text-right pt-2">Description:</label>
+              <textarea className="so-input w-full min-h-[54px]" value={form.notes || ''} onChange={(e) => f('notes', e.target.value)} />
 
-              <label className="text-lg text-right pt-2"><span className="text-red-500">*</span> Type:</label>
-              <select className="so-input so-select w-[196px]" value={form.pricingType} onChange={(e) => f('pricingType', e.target.value)}>
+              <label className="text-sm text-right pt-2"><span className="text-red-500">*</span> Type:</label>
+              <select className="so-input so-select w-[157px]" value={form.pricingType} onChange={(e) => f('pricingType', e.target.value)}>
                 {PRICING_TYPES.map((type) => <option key={type.value} value={type.value}>{type.label}</option>)}
               </select>
             </div>
 
-            <div className="mt-14 border-t border-[#e2e6ef] max-w-[548px] pt-8">
+            <div className="mt-11 border-t border-[#e2e6ef] max-w-[438px] pt-6">
               <button
                 type="button"
                 onClick={() => setImportEnabled((value) => !value)}
-                className="h-[68px] w-full max-w-[506px] bg-[#f0f3fb] rounded-[4px] flex items-center px-7 gap-4 text-xl"
+                className="h-[54px] w-full max-w-[405px] bg-[#f0f3fb] rounded-[4px] flex items-center px-6 gap-3 text-base"
               >
                 <span className={`so-switch ${importEnabled ? 'so-switch-on' : ''}`} />
                 Import price list
@@ -132,11 +132,11 @@ export default function PriceList() {
           </div>
 
           <div className="border-l border-[#e1e5ee] pt-11 pr-4">
-            <div className="grid grid-cols-2 text-lg text-[#586174] mb-8 px-0">
+            <div className="grid grid-cols-2 text-sm text-[#586174] mb-6 px-0">
               <span>Brand</span>
               <span>Category</span>
             </div>
-            <div className="border border-[#d7dce5] min-h-[420px]">
+            <div className="border border-[#d7dce5] min-h-[336px]">
               <table className="so-table">
                 <thead>
                   <tr>
@@ -148,7 +148,7 @@ export default function PriceList() {
                 <tbody>
                   {form.items.length === 0 && (
                     <tr>
-                      <td colSpan={3} className="text-center py-20 text-[#b5bac4]">No Data</td>
+                      <td colSpan={3} className="text-center py-16 text-[#b5bac4]">No Data</td>
                     </tr>
                   )}
                   {form.items.map((item, index) => (
@@ -171,21 +171,21 @@ export default function PriceList() {
     <div className="so-module-page">
       <div className="so-titlebar">
         <h1 className="so-title">Price Lists</h1>
-        <button type="button" onClick={openAdd} className="so-btn-primary text-lg"><Plus size={18} /> New</button>
+        <button type="button" onClick={openAdd} className="so-btn-primary text-sm"><Plus size={15} /> New</button>
       </div>
 
-      <div className="so-table-panel !mt-3 min-h-[556px]">
+      <div className="so-table-panel !mt-2.5 min-h-[445px]">
         <table className="so-table">
           <thead>
             <tr>
               <th>Name</th>
               <th>Description</th>
               <th>Type</th>
-              <th className="w-[80px]"></th>
+              <th className="w-[64px]"></th>
             </tr>
           </thead>
           <tbody>
-            {loading && <tr><td colSpan={4} className="text-center py-20 text-[#98a2b3]">Loading...</td></tr>}
+            {loading && <tr><td colSpan={4} className="text-center py-16 text-[#98a2b3]">Loading...</td></tr>}
             {!loading && lists.length === 0 && (
               <tr>
                 <td colSpan={4}>

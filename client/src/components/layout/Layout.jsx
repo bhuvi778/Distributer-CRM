@@ -6,7 +6,7 @@ export default function Layout() {
   return (
     <div className="min-h-screen bg-[#f0f2f5]">
       <Sidebar />
-      <div className="ml-[250px]">
+      <div className="ml-[200px]">
         <TopBar />
         <main className="p-0">
           <Outlet />

@@ -24,11 +24,11 @@ export default function Sidebar() {
   };
 
   return (
-    <aside className="fixed left-0 top-0 h-full w-[250px] bg-white border-r border-[#e2e2e2] z-40 flex flex-col">
-      <div className="h-[65px] px-7 border-b border-[#ededed] flex items-center">
+    <aside className="fixed left-0 top-0 h-full w-[200px] bg-white border-r border-[#e2e2e2] z-40 flex flex-col">
+      <div className="h-[52px] px-5 border-b border-[#ededed] flex items-center">
         <Link to="/app/dashboard" className="flex items-center gap-3 no-underline">
           <span className="so-logo-mark" aria-hidden="true" />
-          <span className="text-[30px] font-semibold text-[#174bb8] tracking-tight leading-none">SalesOn</span>
+          <span className="text-[24px] font-semibold text-[#174bb8] tracking-tight leading-none">SalesOn</span>
         </Link>
       </div>
 
@@ -81,8 +81,8 @@ export default function Sidebar() {
       </nav>
 
       <div className="border-t border-[#ededed] bg-white">
-        <div className="mx-1.5 my-3 rounded-md bg-[#e60000] text-white px-3 py-3 flex gap-2 items-center text-sm font-semibold leading-snug">
-          <Rocket size={21} />
+        <div className="mx-1.5 my-2.5 rounded-md bg-[#e60000] text-white px-2.5 py-2.5 flex gap-2 items-center text-xs font-semibold leading-snug">
+          <Rocket size={17} />
           <span>Pro Trial plan expires in 7 days | Upgrade Now</span>
         </div>
         {canAccessPath(user, '/app/settings') && (
@@ -91,8 +91,8 @@ export default function Sidebar() {
             <span>Settings</span>
           </Link>
         )}
-        <div className="h-[52px] px-8 border-t border-[#ededed] flex items-center gap-2 text-[#174bb8] font-semibold">
-          <Headphones size={23} />
+        <div className="h-[42px] px-6 border-t border-[#ededed] flex items-center gap-2 text-[#174bb8] font-semibold text-sm">
+          <Headphones size={18} />
           <span>+91 8092856577</span>
         </div>
       </div>

@@ -5,7 +5,7 @@ import { X } from 'lucide-react';
  * Right-side slide panel (drawer) — popups ke liye
  * Usage: <SlidePanel open={bool} onClose={fn} title="Add Item" width="w-[480px]">
  */
-export default function SlidePanel({ open, onClose, title, children, width = 'w-[520px]', headerActions, hideClose = false, bodyClassName = 'p-5' }) {
+export default function SlidePanel({ open, onClose, title, children, width = 'w-[416px]', headerActions, hideClose = false, bodyClassName = 'p-4' }) {
   // ESC key se close
   useEffect(() => {
     const handler = (e) => { if (e.key === 'Escape') onClose(); };
@@ -27,9 +27,9 @@ export default function SlidePanel({ open, onClose, title, children, width = 'w-
           ${open ? 'translate-x-0' : 'translate-x-full'}`}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-8 py-5 border-b border-[#d7dce5] min-h-[74px]">
-          <h2 className="text-2xl font-semibold text-[#101828]">{title}</h2>
-          <div className="flex items-center gap-4">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[#d7dce5] min-h-[59px]">
+          <h2 className="text-xl font-semibold text-[#101828]">{title}</h2>
+          <div className="flex items-center gap-3">
             {headerActions}
             {!hideClose && (
               <button

@@ -96,46 +96,46 @@ export default function TransferOrders() {
         <div className="so-titlebar">
           <h1 className="so-title">Create Transfer Order</h1>
           <div className="so-actions">
-            <button type="button" onClick={() => setCreateMode(false)} className="so-btn-secondary border-[#174bb8] text-[#174bb8] min-w-[50px] text-lg">X</button>
-            <button type="button" onClick={save} className="so-btn-primary text-lg min-w-[80px]">Save</button>
+            <button type="button" onClick={() => setCreateMode(false)} className="so-btn-secondary border-[#174bb8] text-[#174bb8] min-w-[40px] text-sm">X</button>
+            <button type="button" onClick={save} className="so-btn-primary text-sm min-w-[64px]">Save</button>
           </div>
         </div>
 
-        <div className="p-4 space-y-5">
-          <section className="bg-white border border-[#d7dce5] rounded-lg px-8 py-8">
-            <h2 className="text-sm uppercase tracking-wide font-semibold text-[#667085] mb-8">Transfer Order Details</h2>
+        <div className="p-3 space-y-4">
+          <section className="bg-white border border-[#d7dce5] rounded-lg px-6 py-6">
+            <h2 className="text-xs uppercase tracking-wide font-semibold text-[#667085] mb-6">Transfer Order Details</h2>
             <div className="grid grid-cols-2 gap-x-5 gap-y-5">
               <div>
-                <label className="so-label !text-base !text-[#667085]">Transfer Number</label>
+                <label className="so-label !text-sm !text-[#667085]">Transfer Number</label>
                 <input className="so-input w-full" value={form.transferNumber} onChange={(e) => f('transferNumber', e.target.value)} />
               </div>
               <div>
-                <label className="so-label !text-base !text-[#667085]">Transfer Date</label>
+                <label className="so-label !text-sm !text-[#667085]">Transfer Date</label>
                 <input type="date" className="so-input w-full bg-[#f4f4f4] text-[#b3b3b3]" value={form.transferDate} onChange={(e) => f('transferDate', e.target.value)} />
               </div>
               <div>
-                <label className="so-label !text-base !text-[#667085]">From Warehouse</label>
+                <label className="so-label !text-sm !text-[#667085]">From Warehouse</label>
                 <select className="so-input so-select w-full" value={form.fromWarehouse} onChange={(e) => f('fromWarehouse', e.target.value)}>
                   <option value="">Select Warehouse</option>
                   {warehouses.map((warehouse) => <option key={warehouse._id} value={warehouse.name}>{warehouse.name}</option>)}
                 </select>
               </div>
               <div>
-                <label className="so-label !text-base !text-[#667085]">To Warehouse</label>
+                <label className="so-label !text-sm !text-[#667085]">To Warehouse</label>
                 <select className="so-input so-select w-full" value={form.toWarehouse} onChange={(e) => f('toWarehouse', e.target.value)}>
                   <option value="">Select Warehouse</option>
                   {warehouses.map((warehouse) => <option key={warehouse._id} value={warehouse.name}>{warehouse.name}</option>)}
                 </select>
               </div>
               <div>
-                <label className="so-label !text-base !text-[#667085]">Comments</label>
-                <textarea className="so-input w-full min-h-[40px]" value={form.notes} onChange={(e) => f('notes', e.target.value)} placeholder="Additional notes or remarks..." />
+                <label className="so-label !text-sm !text-[#667085]">Comments</label>
+                <textarea className="so-input w-full min-h-[32px]" value={form.notes} onChange={(e) => f('notes', e.target.value)} placeholder="Additional notes or remarks..." />
               </div>
             </div>
           </section>
 
-          <section className="bg-white border border-[#d7dce5] rounded-lg px-8 py-8">
-            <h2 className="text-sm uppercase tracking-wide font-semibold text-[#667085] mb-6">Items</h2>
+          <section className="bg-white border border-[#d7dce5] rounded-lg px-6 py-6">
+            <h2 className="text-xs uppercase tracking-wide font-semibold text-[#667085] mb-5">Items</h2>
             <input
               className="so-input w-full bg-[#e8edf4]"
               value={productQuery}
@@ -149,7 +149,7 @@ export default function TransferOrders() {
             {form.items.length > 0 && (
               <div className="mt-4 border border-[#d7dce5]">
                 <table className="so-table">
-                  <thead><tr><th>Items</th><th className="w-[170px]">Quantity</th></tr></thead>
+                  <thead><tr><th>Items</th><th className="w-[136px]">Quantity</th></tr></thead>
                   <tbody>
                     {form.items.map((item, index) => (
                       <tr key={item.product}>
@@ -184,11 +184,11 @@ export default function TransferOrders() {
     <div className="so-module-page">
       <div className="so-titlebar">
         <h1 className="so-title">Transfer Orders</h1>
-        <button type="button" onClick={openCreate} className="so-btn-primary text-lg">Create Transfer Order</button>
+        <button type="button" onClick={openCreate} className="so-btn-primary text-sm">Create Transfer Order</button>
       </div>
 
       <div className="so-filterbar">
-        <input className="so-input w-[378px]" readOnly value={range} />
+        <input className="so-input w-[302px]" readOnly value={range} />
       </div>
 
       <div className="so-table-panel">
@@ -201,11 +201,11 @@ export default function TransferOrders() {
               <th>To</th>
               <th>Comment</th>
               <th>Status</th>
-              <th className="w-[150px]"></th>
+              <th className="w-[120px]"></th>
             </tr>
           </thead>
           <tbody>
-            {loading && <tr><td colSpan={7} className="text-center py-20 text-[#98a2b3]">Loading...</td></tr>}
+            {loading && <tr><td colSpan={7} className="text-center py-16 text-[#98a2b3]">Loading...</td></tr>}
             {!loading && transfers.length === 0 && (
               <tr>
                 <td colSpan={7}>

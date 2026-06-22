@@ -60,7 +60,7 @@ function CurrencyField({ value, onChange, placeholder }) {
     <div className="flex">
       <span className="so-input-addon">₹</span>
       <input className="so-input flex-1 rounded-none" type="number" min="0" value={value} onChange={onChange} placeholder={placeholder} />
-      <select className="so-input so-select w-[126px] rounded-l-none" defaultValue="excl">
+      <select className="so-input so-select w-[101px] rounded-l-none" defaultValue="excl">
         <option value="excl">Excl. of Tax</option>
         <option value="incl">Incl. of Tax</option>
       </select>
@@ -177,10 +177,10 @@ export default function Items() {
       <div className="so-titlebar">
         <h1 className="so-title">Items</h1>
         <div className="so-actions">
-          <button type="button" className="so-icon-btn !w-[58px] !h-9" title="Settings"><Settings size={20} /></button>
-          <button type="button" onClick={() => exportToExcel(items, 'items', EXPORT_COLS)} className="so-btn-secondary text-lg"><Download size={18} /> Export</button>
-          <button type="button" className="so-btn-secondary border-[#174bb8] text-[#174bb8] text-lg"><Upload size={18} /> Import</button>
-          <button type="button" onClick={openAdd} className="so-btn-primary text-lg"><Plus size={18} /> New</button>
+          <button type="button" className="so-icon-btn !w-[46px] !h-7" title="Settings"><Settings size={16} /></button>
+          <button type="button" onClick={() => exportToExcel(items, 'items', EXPORT_COLS)} className="so-btn-secondary text-sm"><Download size={15} /> Export</button>
+          <button type="button" className="so-btn-secondary border-[#174bb8] text-[#174bb8] text-sm"><Upload size={15} /> Import</button>
+          <button type="button" onClick={openAdd} className="so-btn-primary text-sm"><Plus size={15} /> New</button>
         </div>
       </div>
 
@@ -190,20 +190,20 @@ export default function Items() {
           <button type="button" className="so-search-button" onClick={load}><Search size={21} /></button>
         </div>
         <div className="flex-1" />
-        <select className="so-input so-select w-[240px]" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+        <select className="so-input so-select w-[192px]" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
           <option value="">Select Status</option>
           <option value="active">Active</option>
           <option value="inactive">Inactive</option>
         </select>
-        <select className="so-input so-select w-[240px]" value={warehouseFilter} onChange={(e) => setWarehouseFilter(e.target.value)}>
+        <select className="so-input so-select w-[192px]" value={warehouseFilter} onChange={(e) => setWarehouseFilter(e.target.value)}>
           <option value="">Select Warehouse</option>
           <option value="Main">Main Warehouse</option>
           {warehouses.map((w) => <option key={w._id} value={w.name}>{w.name}</option>)}
         </select>
         <div className="ml-14 flex items-center gap-3 text-sm text-[#111827]">
           <span>1 - {totalCount} of {totalCount}</span>
-          <button type="button" className="so-icon-btn !w-12 !h-11 text-[#174bb8] text-xl">‹</button>
-          <button type="button" className="so-icon-btn !w-12 !h-11 text-[#174bb8] text-xl">›</button>
+          <button type="button" className="so-icon-btn !w-10 !h-9 text-[#174bb8] text-base">‹</button>
+          <button type="button" className="so-icon-btn !w-10 !h-9 text-[#174bb8] text-base">›</button>
         </div>
       </div>
 
@@ -252,25 +252,25 @@ export default function Items() {
         open={panelOpen}
         onClose={() => setPanelOpen(false)}
         title={editing ? 'Edit Items' : 'Create Items'}
-        width="w-[740px]"
+        width="w-[592px]"
         hideClose
         bodyClassName="p-3"
         headerActions={(
           <>
-            <button type="button" onClick={save} disabled={saving} className="so-btn-primary text-lg min-w-[84px]">{saving ? 'Saving...' : 'Save'}</button>
-            <button type="button" onClick={() => setPanelOpen(false)} className="text-lg px-4">Cancel</button>
+            <button type="button" onClick={save} disabled={saving} className="so-btn-primary text-sm min-w-[67px]">{saving ? 'Saving...' : 'Save'}</button>
+            <button type="button" onClick={() => setPanelOpen(false)} className="text-sm px-3">Cancel</button>
           </>
         )}
       >
         <div className="space-y-8">
           <FormSection title="General Details">
             <div className="space-y-3 px-3">
-              <div className="grid grid-cols-[1fr_168px] gap-3 items-end">
+              <div className="grid grid-cols-[1fr_134px] gap-3 items-end">
                 <div>
                   <label className="so-label">Item Name<span className="text-red-500">*</span></label>
                   <input className="so-input w-full" value={form.name} onChange={(e) => f('name', e.target.value)} placeholder="Name of item" />
                 </div>
-                <button type="button" onClick={() => f('isActive', !form.isActive)} className="flex items-center gap-3 h-10 text-lg">
+                <button type="button" onClick={() => f('isActive', !form.isActive)} className="flex items-center gap-2 h-8 text-sm">
                   <span className={`so-switch ${form.isActive ? 'so-switch-on' : ''}`} />
                   Activate item
                 </button>
@@ -297,7 +297,7 @@ export default function Items() {
                 </div>
                 <div>
                   <label className="so-label">Item Description</label>
-                  <textarea className="so-input w-full min-h-[90px]" value={form.description} onChange={(e) => f('description', e.target.value)} placeholder="Item description" />
+                  <textarea className="so-input w-full min-h-[72px]" value={form.description} onChange={(e) => f('description', e.target.value)} placeholder="Item description" />
                 </div>
               </div>
 
@@ -369,7 +369,7 @@ export default function Items() {
                   <label className="so-label">Discount</label>
                   <div className="flex">
                     <input type="number" min="0" className="so-input flex-1 rounded-r-none" value={form.discount} onChange={(e) => f('discount', e.target.value)} placeholder="Discount" />
-                    <select className="so-input so-select w-[104px] rounded-l-none" value={form.discountType} onChange={(e) => f('discountType', e.target.value)}>
+                    <select className="so-input so-select w-[83px] rounded-l-none" value={form.discountType} onChange={(e) => f('discountType', e.target.value)}>
                       <option value="amount">Amount</option>
                       <option value="percent">Percent</option>
                     </select>
@@ -384,7 +384,7 @@ export default function Items() {
           </FormSection>
 
           <FormSection title="Stock Details">
-            <div className="px-3 max-w-[330px]">
+            <div className="px-3 max-w-[264px]">
               <label className="so-label">Stock</label>
               <input type="number" min="0" className="so-input w-full" value={editing ? form.stock : form.openingStock} onChange={(e) => (editing ? f('stock', e.target.value) : f('openingStock', e.target.value))} placeholder="Stock" />
             </div>

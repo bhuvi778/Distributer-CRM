@@ -133,8 +133,8 @@ export default function Warehouses() {
       <div className="so-titlebar">
         <h1 className="so-title">Warehouse</h1>
         <div className="so-actions">
-          <button type="button" onClick={() => importRef.current?.click()} className="so-btn-secondary border-[#174bb8] text-[#174bb8] text-lg"><Upload size={18} /> Import</button>
-          <button type="button" onClick={openAdd} className="so-btn-primary text-lg"><Plus size={18} /> New</button>
+          <button type="button" onClick={() => importRef.current?.click()} className="so-btn-secondary border-[#174bb8] text-[#174bb8] text-sm"><Upload size={15} /> Import</button>
+          <button type="button" onClick={openAdd} className="so-btn-primary text-sm"><Plus size={15} /> New</button>
           <input ref={importRef} type="file" accept=".csv,text/csv" className="hidden" onChange={handleImport} />
         </div>
       </div>
@@ -150,12 +150,12 @@ export default function Warehouses() {
         <table className="so-table">
           <thead>
             <tr>
-              <th className="w-[82px]">S.No</th>
+              <th className="w-[66px]">S.No</th>
               <th>Name</th>
               <th>Address</th>
               <th>Status</th>
               <th>Primary</th>
-              <th className="w-[132px]"></th>
+              <th className="w-[106px]"></th>
             </tr>
           </thead>
           <tbody>
@@ -167,11 +167,11 @@ export default function Warehouses() {
                 <td>{warehouse.name}</td>
                 <td>{[warehouse.address?.street, warehouse.address?.city].filter(Boolean).join(', ') || '-'}</td>
                 <td><span className={`so-switch ${warehouse.isActive !== false ? 'so-switch-on' : ''}`} /></td>
-                <td>{warehouse.type === 'primary' && <span className="px-3 py-1 rounded bg-[#07b719] text-white font-semibold">Primary</span>}</td>
+                <td>{warehouse.type === 'primary' && <span className="px-2.5 py-0.5 rounded bg-[#07b719] text-white font-semibold text-sm">Primary</span>}</td>
                 <td>
                   <div className="flex justify-center gap-2">
-                    <button type="button" onClick={() => exportOne(warehouse)} className="so-icon-btn !w-10 !h-10"><Download size={17} /></button>
-                    <button type="button" onClick={() => openEdit(warehouse)} className="so-icon-btn !w-10 !h-10"><Edit2 size={17} /></button>
+                    <button type="button" onClick={() => exportOne(warehouse)} className="so-icon-btn !w-8 !h-8"><Download size={14} /></button>
+                    <button type="button" onClick={() => openEdit(warehouse)} className="so-icon-btn !w-8 !h-8"><Edit2 size={14} /></button>
                   </div>
                 </td>
               </tr>
@@ -184,13 +184,13 @@ export default function Warehouses() {
         open={panelOpen}
         onClose={() => setPanelOpen(false)}
         title={editing ? 'Edit Warehouse' : 'Create Warehouse'}
-        width="w-[750px]"
+        width="w-[600px]"
         hideClose
         bodyClassName="p-4"
         headerActions={(
           <>
-            <button type="button" onClick={save} className="so-btn-primary text-lg min-w-[84px]">Save</button>
-            <button type="button" onClick={() => setPanelOpen(false)} className="text-lg px-4">Cancel</button>
+            <button type="button" onClick={save} className="so-btn-primary text-sm min-w-[67px]">Save</button>
+            <button type="button" onClick={() => setPanelOpen(false)} className="text-sm px-3">Cancel</button>
           </>
         )}
       >
@@ -207,7 +207,7 @@ export default function Warehouses() {
               </div>
               <div>
                 <label className="so-label">Address</label>
-                <textarea className="so-input w-full min-h-[90px]" value={form.address?.street || ''} onChange={(e) => fa('street', e.target.value)} autoFocus />
+                <textarea className="so-input w-full min-h-[72px]" value={form.address?.street || ''} onChange={(e) => fa('street', e.target.value)} autoFocus />
               </div>
               <div>
                 <label className="so-label">Email</label>
