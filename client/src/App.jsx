@@ -10,7 +10,8 @@ import LiveTracking from './pages/LiveTracking';
 import Attendance from './pages/Attendance';
 import VanSales from './pages/VanSales';
 import Targets from './pages/Targets';
-import Payments from './pages/Payments';
+import PaymentIn from './pages/PaymentIn';
+import PaymentOut from './pages/PaymentOut';
 import Invoices from './pages/Invoices';
 import Orders from './pages/Orders';
 import Purchases from './pages/Purchases';
@@ -148,8 +149,8 @@ function AppRoutes() {
         {/* Finance */}
         <Route path="payments">
           <Route index element={<Navigate to="in" replace />} />
-          <Route path="in"  element={<RoleRoute path="/app/payments"><P><Payments /></P></RoleRoute>} />
-          <Route path="out" element={<RoleRoute path="/app/payments"><P><Payments /></P></RoleRoute>} />
+          <Route path="in"  element={<RoleRoute path="/app/payments/in"><P><PaymentIn /></P></RoleRoute>} />
+          <Route path="out" element={<RoleRoute path="/app/payments/out"><P><PaymentOut /></P></RoleRoute>} />
         </Route>
         <Route path="invoices"  element={<RoleRoute path="/app/invoices"><P><Invoices /></P></RoleRoute>} />
         <Route path="reports"   element={<RoleRoute path="/app/reports"><P><Reports /></P></RoleRoute>} />

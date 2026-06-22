@@ -115,8 +115,8 @@ export const SALESON_NAV_DEF = [
     label: 'Finance',
     icon: CreditCard,
     items: [
-      { path: '/app/payments/in',  moduleId: 'payments', label: 'Payment In' },
-      { path: '/app/payments/out', moduleId: 'payments', label: 'Payment Out' },
+      { path: '/app/payments/in',  moduleId: 'payment-in',  label: 'Payment In' },
+      { path: '/app/payments/out', moduleId: 'payment-out', label: 'Payment Out' },
     ],
   },
   {

@@ -6,6 +6,8 @@ export const PERMISSION_MODULES = [
   { id: 'orders', path: '/app/orders', label: 'Sales Orders', section: 'Sales' },
   { id: 'invoices', path: '/app/invoices', label: 'Invoices & GST', section: 'Sales' },
   { id: 'payments', path: '/app/payments', label: 'Payment Collection', section: 'Sales' },
+  { id: 'payment-in', path: '/app/payments/in', label: 'Payment In', section: 'Sales' },
+  { id: 'payment-out', path: '/app/payments/out', label: 'Payment Out', section: 'Sales' },
   { id: 'van-sales', path: '/app/van-sales', label: 'Van Sales', section: 'Sales' },
   { id: 'targets', path: '/app/targets', label: 'Target Meter', section: 'Sales' },
   { id: 'outlets', path: '/app/outlets', label: 'Outlets / Customers', section: 'Operations' },

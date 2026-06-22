@@ -44,7 +44,9 @@ export const PERMISSION_MODULES = [
   { id: 'delivery',    path: '/app/sales/delivery-challans', label: 'Delivery', section: 'Delivery' },
 
   // Finance
-  { id: 'payments',    path: '/app/payments',    label: 'Payment Collection', section: 'Finance' },
+  { id: 'payments',    path: '/app/payments',     label: 'Payment Collection', section: 'Finance' },
+  { id: 'payment-in',  path: '/app/payments/in',  label: 'Payment In',         section: 'Finance' },
+  { id: 'payment-out', path: '/app/payments/out', label: 'Payment Out',        section: 'Finance' },
   { id: 'invoices',    path: '/app/invoices',    label: 'Invoices & GST',     section: 'Finance' },
   { id: 'reports',     path: '/app/reports',     label: 'Business Reports',   section: 'Finance' },
 

@@ -152,10 +152,10 @@ function PaymentPanel({ open, onClose, isOut, form, setForm, users, onSave, savi
   );
 }
 
-export default function Payments() {
+export default function Payments({ forcedType }) {
   const { user } = useAuth();
   const location = useLocation();
-  const paymentType = location.pathname.includes('/out') ? 'out' : 'in';
+  const paymentType = forcedType || (location.pathname.includes('/out') ? 'out' : 'in');
   const isOut = paymentType === 'out';
   const title = isOut ? 'Payment Out' : 'Payment In';
   const { users } = useMasterData();
