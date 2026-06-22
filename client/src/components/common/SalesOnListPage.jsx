@@ -17,25 +17,25 @@ export default function SalesOnListPage({
   pageEnd = 0,
 }) {
   return (
-    <div className="bg-white border border-[#e0e0e0] rounded min-h-[calc(100vh-80px)]">
+    <div className="so-module-page">
       {/* Title row */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-[#e0e0e0]">
-        <h1 className="text-base font-semibold text-[#333]">{title}</h1>
-        <div className="flex items-center gap-2">
+      <div className="so-titlebar">
+        <h1 className="so-title">{title}</h1>
+        <div className="so-actions">
           {onSettings && (
-            <button type="button" onClick={onSettings} className="btn-icon" title="Settings">
-              <Settings size={16} />
+            <button type="button" onClick={onSettings} className="so-icon-btn !w-[46px] !h-7" title="Settings">
+              <Settings size={15} />
             </button>
           )}
           {onImport && (
-            <button type="button" onClick={onImport} className="btn-secondary !py-1.5 !text-sm">
-              <Download size={15} /> Import
+            <button type="button" onClick={onImport} className="so-btn-secondary">
+              <Download size={14} /> Import
             </button>
           )}
           {toolbar}
           {onAdd && (
-            <button type="button" onClick={onAdd} className="btn-add" title="Add New">
-              <Plus size={20} />
+            <button type="button" onClick={onAdd} className="so-btn-primary" title="Add New">
+              <Plus size={14} /> New
             </button>
           )}
         </div>
@@ -43,20 +43,20 @@ export default function SalesOnListPage({
 
       {/* Filters row */}
       {(filters || pagination) && (
-        <div className="flex flex-wrap items-center gap-3 px-4 py-3 border-b border-[#e0e0e0] bg-[#fafafa]">
+        <div className="so-filterbar">
           {filters}
           {pagination !== false && (
-            <div className="ml-auto flex items-center gap-2 text-sm text-[#757575]">
+            <div className="ml-auto flex items-center gap-2 text-sm text-[#111827]">
               <span>{pageStart} - {pageEnd || totalCount} of {totalCount}</span>
-              <button type="button" className="btn-icon !w-7 !h-7"><ChevronLeft size={14} /></button>
-              <button type="button" className="btn-icon !w-7 !h-7"><ChevronRight size={14} /></button>
+              <button type="button" className="so-icon-btn !w-8 !h-8 text-[#174bb8]"><ChevronLeft size={13} /></button>
+              <button type="button" className="so-icon-btn !w-8 !h-8 text-[#174bb8]"><ChevronRight size={13} /></button>
             </div>
           )}
         </div>
       )}
 
       {/* Content */}
-      <div>{children}</div>
+      <div className="so-table-panel">{children}</div>
     </div>
   );
 }
@@ -66,7 +66,7 @@ export function SalesOnFilterSelect({ label, value, onChange, options = [] }) {
     <select
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className="input-field !w-auto !py-1.5 !text-sm min-w-[140px]"
+      className="so-input so-select !w-auto min-w-[140px]"
     >
       <option value="">{label}</option>
       {options.map((o) => (
@@ -83,7 +83,7 @@ export function SalesOnSearchInput({ value, onChange, placeholder = 'Search' }) 
       value={value}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
-      className="input-field !w-48 !py-1.5 !text-sm"
+      className="so-input !w-48"
     />
   );
 }

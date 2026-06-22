@@ -610,4 +610,86 @@
     font-size: 11px;
     line-height: 1;
   }
+
+  /* Legacy/custom pages: make existing page structures follow the SalesOn shell */
+  .so-legacy-page {
+    background: #eef1f5;
+  }
+
+  .so-legacy-page > div {
+    max-width: 100%;
+  }
+
+  .so-legacy-page .p-4:first-child,
+  .so-legacy-page .p-5:first-child,
+  .so-legacy-page .so-page {
+    padding: 0 !important;
+  }
+
+  .so-legacy-page > div > div:first-child:has(h1),
+  .so-legacy-page .so-page-header {
+    min-height: 56px;
+    background: #fff;
+    border-bottom: 1px solid #d7dce5;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 0 14px;
+    margin: 0 !important;
+  }
+
+  .so-legacy-page > div > div:first-child:has(h1) h1,
+  .so-legacy-page .so-page-title {
+    font-size: 1.4rem !important;
+    font-weight: 400 !important;
+    color: #020617 !important;
+    line-height: 1.15;
+  }
+
+  .so-legacy-page > div > div:first-child:has(h1) p {
+    font-size: 0.75rem !important;
+    line-height: 1.2;
+    color: #667085 !important;
+  }
+
+  .so-legacy-page > div > div:first-child:has(h1) + .relative,
+  .so-legacy-page > div > div:first-child:has(h1) + .flex,
+  .so-legacy-page .so-page-header + .flex {
+    background: #fff;
+    border: 1px solid #d7dce5;
+    border-left: 0;
+    border-right: 0;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.13);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-height: 54px;
+    padding: 9px 14px;
+    margin: 0 !important;
+  }
+
+  .so-legacy-page > div > :not(:first-child):not(.so-filterbar):not(.so-table-panel):not(.so-table-wrap) {
+    margin-left: 6px;
+    margin-right: 6px;
+  }
+
+  .so-legacy-page .so-table-wrap {
+    margin: 10px 6px 0;
+    background: #fff;
+    border: 1px solid #d7dce5;
+    border-radius: 0;
+    min-height: 394px;
+  }
+
+  .so-legacy-page .card,
+  .so-legacy-page .glass-card,
+  .so-legacy-page .stat-card,
+  .so-legacy-page [class*="rounded-lg"] {
+    border-radius: 3px;
+  }
+
+  .so-legacy-page .grid[class*="gap-"] {
+    gap: 0.75rem;
+  }
 }

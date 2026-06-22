@@ -81,63 +81,62 @@ export default function DataPage({
   };
 
   return (
-    <div>
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+    <div className="so-module-page">
+      <div className="so-titlebar">
         <div>
-          <h1 className="text-2xl font-bold">{title}</h1>
-          {subtitle && <p className="text-surface-800/60 mt-1">{subtitle}</p>}
+          <h1 className="so-title">{title}</h1>
+          {subtitle && <p className="text-[#667085] mt-0.5 text-xs leading-snug">{subtitle}</p>}
         </div>
-        <div className="flex items-center gap-3">
-          <button onClick={fetchData} className="btn-secondary !px-3">
-            <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+        <div className="so-actions">
+          <button onClick={fetchData} className="so-btn-secondary !px-3">
+            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
           </button>
-          <button onClick={openCreate} className="btn-primary">
-            <Plus size={18} /> Add New
+          <button onClick={openCreate} className="so-btn-primary">
+            <Plus size={14} /> Add New
           </button>
         </div>
       </div>
 
-      <div className="glass-card overflow-hidden">
-        <div className="p-4 border-b border-surface-100">
-          <div className="relative max-w-sm">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-surface-800/40" />
+      <div className="so-filterbar">
+          <div className="relative w-[240px]">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#98a2b3]" />
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search..."
-              className="input-field !pl-9 !py-2"
+              placeholder="Search"
+              className="so-input !pl-9 w-full"
             />
           </div>
-        </div>
+      </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-surface-50/80">
+      <div className="so-table-panel overflow-x-auto">
+          <table className="so-table">
+            <thead>
               <tr>
                 {columns.map((col) => (
-                  <th key={col.key} className="table-header">{col.label}</th>
+                  <th key={col.key}>{col.label}</th>
                 ))}
-                <th className="table-header text-right">Actions</th>
+                <th className="text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-surface-100">
+            <tbody>
               {loading ? (
-                <tr><td colSpan={columns.length + 1} className="table-cell text-center py-12 text-surface-800/40">Loading...</td></tr>
+                <tr><td colSpan={columns.length + 1} className="text-center py-16 text-[#98a2b3]">Loading...</td></tr>
               ) : filtered.length === 0 ? (
-                <tr><td colSpan={columns.length + 1} className="table-cell text-center py-12 text-surface-800/40">No data found</td></tr>
+                <tr><td colSpan={columns.length + 1} className="text-center py-16 text-[#98a2b3]">No data found</td></tr>
               ) : filtered.map((row) => (
-                <tr key={row._id} className="hover:bg-surface-50/50 transition-colors">
+                <tr key={row._id}>
                   {columns.map((col) => (
-                    <td key={col.key} className="table-cell">{renderCell(col, row)}</td>
+                    <td key={col.key}>{renderCell(col, row)}</td>
                   ))}
-                  <td className="table-cell text-right">
+                  <td className="text-right">
                     <div className="flex items-center justify-end gap-1">
                       {renderActions?.(row, fetchData)}
-                      <button onClick={() => openEdit(row)} className="p-1.5 hover:bg-brand-50 hover:text-brand-600 rounded-lg transition-colors">
-                        <Edit2 size={16} />
+                      <button onClick={() => openEdit(row)} className="so-icon-btn">
+                        <Edit2 size={14} />
                       </button>
-                      <button onClick={() => handleDelete(row._id)} className="p-1.5 hover:bg-red-50 hover:text-red-600 rounded-lg transition-colors">
-                        <Trash2 size={16} />
+                      <button onClick={() => handleDelete(row._id)} className="so-icon-btn hover:text-red-600">
+                        <Trash2 size={14} />
                       </button>
                     </div>
                   </td>
@@ -145,7 +144,6 @@ export default function DataPage({
               ))}
             </tbody>
           </table>
-        </div>
       </div>
 
       <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title={editItem ? 'Edit' : 'Create New'} size="lg">

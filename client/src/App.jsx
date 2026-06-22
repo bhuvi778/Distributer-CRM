@@ -71,7 +71,7 @@ function RootRedirect() {
 
 // Wrap a page with so-page padding
 function P({ children }) {
-  return <div className="p-5 max-w-full">{children}</div>;
+  return <div className="so-module-page so-legacy-page">{children}</div>;
 }
 
 function AppRoutes() {
@@ -84,10 +84,10 @@ function AppRoutes() {
         <Route index element={<AppIndexRedirect />} />
 
         {/* Dashboard */}
-        <Route path="dashboard" element={<RoleRoute path="/app/dashboard"><Dashboard /></RoleRoute>} />
+        <Route path="dashboard" element={<RoleRoute path="/app/dashboard"><P><Dashboard /></P></RoleRoute>} />
 
         {/* Live Location */}
-        <Route path="tracking" element={<RoleRoute path="/app/tracking"><LiveTracking /></RoleRoute>} />
+        <Route path="tracking" element={<RoleRoute path="/app/tracking"><P><LiveTracking /></P></RoleRoute>} />
 
         {/* ── INVENTORY ── */}
         <Route path="inventory">
@@ -116,32 +116,32 @@ function AppRoutes() {
           <Route index element={<Navigate to="estimates" replace />} />
           <Route path="estimates"         element={<RoleRoute path="/app/sales/estimates"><P><Estimates /></P></RoleRoute>} />
           <Route path="orders"            element={<RoleRoute path="/app/sales/orders"><P><Orders /></P></RoleRoute>} />
-          <Route path="invoices"          element={<RoleRoute path="/app/sales/invoices"><SalesInvoices /></RoleRoute>} />
+          <Route path="invoices"          element={<RoleRoute path="/app/sales/invoices"><P><SalesInvoices /></P></RoleRoute>} />
           <Route path="delivery-challans" element={<RoleRoute path="/app/sales/delivery-challans"><P><DeliveryChallans /></P></RoleRoute>} />
           <Route path="returns"           element={<RoleRoute path="/app/sales/returns"><P><SalesReturns /></P></RoleRoute>} />
         </Route>
 
         {/* ── PURCHASES ── */}
-        <Route path="purchases"  element={<RoleRoute path="/app/purchases"><Purchases /></RoleRoute>} />
+        <Route path="purchases"  element={<RoleRoute path="/app/purchases"><P><Purchases /></P></RoleRoute>} />
         <Route path="production">
           <Route index element={<Navigate to="production-orders" replace />} />
-          <Route path="grm" element={<RoleRoute path="/app/production"><Production /></RoleRoute>} />
-          <Route path="bom" element={<RoleRoute path="/app/production"><Production /></RoleRoute>} />
-          <Route path="work-orders" element={<RoleRoute path="/app/production"><Production /></RoleRoute>} />
-          <Route path="production-orders" element={<RoleRoute path="/app/production"><Production /></RoleRoute>} />
+          <Route path="grm" element={<RoleRoute path="/app/production"><P><Production /></P></RoleRoute>} />
+          <Route path="bom" element={<RoleRoute path="/app/production"><P><Production /></P></RoleRoute>} />
+          <Route path="work-orders" element={<RoleRoute path="/app/production"><P><Production /></P></RoleRoute>} />
+          <Route path="production-orders" element={<RoleRoute path="/app/production"><P><Production /></P></RoleRoute>} />
         </Route>
 
         {/* Van Sales */}
-        <Route path="van-sales" element={<RoleRoute path="/app/van-sales"><VanSales /></RoleRoute>} />
+        <Route path="van-sales" element={<RoleRoute path="/app/van-sales"><P><VanSales /></P></RoleRoute>} />
 
         {/* Finance */}
         <Route path="payments">
           <Route index element={<Navigate to="in" replace />} />
-          <Route path="in"  element={<RoleRoute path="/app/payments"><Payments /></RoleRoute>} />
-          <Route path="out" element={<RoleRoute path="/app/payments"><Payments /></RoleRoute>} />
+          <Route path="in"  element={<RoleRoute path="/app/payments"><P><Payments /></P></RoleRoute>} />
+          <Route path="out" element={<RoleRoute path="/app/payments"><P><Payments /></P></RoleRoute>} />
         </Route>
-        <Route path="invoices"  element={<RoleRoute path="/app/invoices"><Invoices /></RoleRoute>} />
-        <Route path="reports"   element={<RoleRoute path="/app/reports"><Reports /></RoleRoute>} />
+        <Route path="invoices"  element={<RoleRoute path="/app/invoices"><P><Invoices /></P></RoleRoute>} />
+        <Route path="reports"   element={<RoleRoute path="/app/reports"><P><Reports /></P></RoleRoute>} />
 
         {/* ── ROUTES ── */}
         <Route path="routes">
@@ -152,17 +152,17 @@ function AppRoutes() {
         </Route>
 
         {/* Attendance */}
-        <Route path="attendance" element={<RoleRoute path="/app/attendance"><Attendance /></RoleRoute>} />
+        <Route path="attendance" element={<RoleRoute path="/app/attendance"><P><Attendance /></P></RoleRoute>} />
 
         {/* Users & Targets */}
-        <Route path="employees" element={<RoleRoute path="/app/employees"><Employees /></RoleRoute>} />
-        <Route path="admins"    element={<RoleRoute path="/app/admins"><Admins /></RoleRoute>} />
-        <Route path="targets"   element={<RoleRoute path="/app/targets"><Targets /></RoleRoute>} />
+        <Route path="employees" element={<RoleRoute path="/app/employees"><P><Employees /></P></RoleRoute>} />
+        <Route path="admins"    element={<RoleRoute path="/app/admins"><P><Admins /></P></RoleRoute>} />
+        <Route path="targets"   element={<RoleRoute path="/app/targets"><P><Targets /></P></RoleRoute>} />
 
         {/* Settings & Support */}
-        <Route path="settings" element={<RoleRoute path="/app/settings"><SettingsPage /></RoleRoute>} />
-        <Route path="support"  element={<RoleRoute path="/app/support"><Support /></RoleRoute>} />
-        <Route path="expenses" element={<RoleRoute path="/app/expenses"><Expenses /></RoleRoute>} />
+        <Route path="settings" element={<RoleRoute path="/app/settings"><P><SettingsPage /></P></RoleRoute>} />
+        <Route path="support"  element={<RoleRoute path="/app/support"><P><Support /></P></RoleRoute>} />
+        <Route path="expenses" element={<RoleRoute path="/app/expenses"><P><Expenses /></P></RoleRoute>} />
       </Route>
     </Routes>
   );
