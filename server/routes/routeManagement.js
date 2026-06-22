@@ -68,10 +68,11 @@ router.delete('/cities/:id', protect, async (req, res) => {
 // ─── AREAS ──────────────────────────────────────────────────────
 router.get('/areas', protect, async (req, res) => {
   try {
-    const { city, region } = req.query;
+    const { city, region, warehouse } = req.query;
     const filter = { isActive: true };
     if (city) filter.city = city;
     if (region) filter.region = region;
+    if (warehouse) filter.warehouse = warehouse;
     const areas = await Area.find(filter).populate('city', 'name state pincode').populate('region', 'name').populate('assignedRep', 'name').sort('name');
     res.json(areas);
   } catch (e) { res.status(500).json({ message: e.message }); }

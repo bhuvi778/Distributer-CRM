@@ -1,213 +1,163 @@
-import { useState, useEffect, useCallback } from 'react';
-import { Plus, Edit2, Trash2, Search, Download, Upload, X } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Edit2, Search, Trash2, X } from 'lucide-react';
 import api from '../../api/axios';
-import useIndiaLocations from '../../hooks/useIndiaLocations';
 
-function Modal({ editing, regions, onClose, onSave }) {
-  const [form, setForm] = useState(
-    editing
-      ? { name: editing.name, region: editing.region?._id || editing.region || '', state: editing.state || '', pincode: editing.pincode || '' }
-      : { name: '', region: '', state: '', pincode: '' }
-  );
-  const [saving, setSaving] = useState(false);
-  const [pinQuery, setPinQuery] = useState(editing?.pincode || editing?.name || '');
-  const [pinSuggestions, setPinSuggestions] = useState([]);
-  const { states, cities, loadingCities } = useIndiaLocations(form.state);
-  const f = (k, v) => setForm(p => ({ ...p, [k]: v }));
-
-  useEffect(() => {
-    const q = pinQuery.trim();
-    if (q.length < 2) {
-      setPinSuggestions([]);
-      return undefined;
-    }
-    const timer = setTimeout(async () => {
-      try {
-        const { data } = await api.get('/pincodes/search', { params: { q } });
-        setPinSuggestions(data);
-      } catch {
-        setPinSuggestions([]);
-      }
-    }, 350);
-    return () => clearTimeout(timer);
-  }, [pinQuery]);
-
-  // Auto-fill state from selected region
-  const handleRegionChange = (id) => {
-    const r = regions.find(x => x._id === id);
-    f('region', id);
-    if (r?.states?.[0] && !form.state) f('state', r.states[0]);
-  };
-
-  const selectPincode = (pin) => {
-    setForm(p => ({
-      ...p,
-      name: p.name || pin.district || pin.name,
-      state: pin.state || p.state,
-      pincode: pin.pincode,
-    }));
-    setPinQuery(`${pin.pincode} - ${pin.name}`);
-    setPinSuggestions([]);
-  };
-
-  const save = async () => {
-    if (!form.name)   return alert('City name is required');
-    if (!form.region) return alert('Region is required');
-    setSaving(true);
-    try {
-      if (editing) await api.put(`/route-management/cities/${editing._id}`, form);
-      else         await api.post('/route-management/cities', form);
-      onSave();
-    } catch (e) { alert(e.response?.data?.message || 'Error'); }
-    finally { setSaving(false); }
-  };
-
+function RouteDialog({ title, children, onClose, onSave, saving }) {
   return (
-    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-lg shadow-2xl w-full max-w-md">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-[#e0e0e0]">
-          <h3 className="text-sm font-semibold text-[#333]">{editing ? 'Edit City' : 'Create City'}</h3>
-          <button onClick={onClose} className="text-[#9e9e9e] hover:text-[#333]"><X size={18} /></button>
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/45" onClick={onClose} />
+      <div className="relative w-[min(624px,calc(100vw-32px))] bg-white rounded-[3px] border border-[#d7dce5] shadow-2xl">
+        <div className="h-[68px] flex items-center justify-between px-5 border-b border-[#eceff4]">
+          <h2 className="text-xl font-semibold text-[#202733]">{title}</h2>
+          <button type="button" onClick={onClose} className="text-[#777] hover:text-[#111]">
+            <X size={22} strokeWidth={3} />
+          </button>
         </div>
-        <div className="px-5 py-4 space-y-4">
-          <div>
-            <label className="so-label">Region *</label>
-            <select className="so-input w-full" value={form.region} onChange={e => handleRegionChange(e.target.value)}>
-              <option value="">Select Region</option>
-              {regions.map(r => <option key={r._id} value={r._id}>{r.name}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="so-label">City Name *</label>
-            <select className="so-input w-full" value={form.name} onChange={e => f('name', e.target.value)} disabled={!form.state || loadingCities} autoFocus>
-              <option value="">{loadingCities ? 'Loading cities...' : 'Select City'}</option>
-              {cities.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="so-label">State</label>
-            <select className="so-input w-full" value={form.state} onChange={e => setForm(p => ({ ...p, state: e.target.value, name: '' }))}>
-              <option value="">Select State</option>
-              {states.map(s => <option key={s} value={s}>{s}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="so-label">Pincode</label>
-            <input className="so-input w-full" value={form.pincode} onChange={e => { f('pincode', e.target.value); setPinQuery(e.target.value); }} placeholder="Type pincode or post office" />
-            {pinSuggestions.length > 0 && (
-              <div className="mt-2 border border-[#e0e0e0] rounded bg-white max-h-40 overflow-auto">
-                {pinSuggestions.map((pin) => (
-                  <button key={`${pin.name}-${pin.pincode}`} type="button" onClick={() => selectPincode(pin)} className="block w-full text-left px-3 py-2 text-xs hover:bg-[#f5f5f5]">
-                    <span className="font-mono">{pin.pincode}</span> - {pin.name}, {pin.district}, {pin.state}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-        <div className="flex items-center justify-end gap-3 px-5 py-4 border-t border-[#e0e0e0]">
-          <button onClick={onClose} className="so-btn-secondary px-6">Cancel</button>
-          <button onClick={save} disabled={saving} className="so-btn-primary px-6">{saving ? 'Saving…' : 'Save'}</button>
+        <div className="px-5 py-7 min-h-[220px]">{children}</div>
+        <div className="h-[66px] px-5 border-t border-[#d7dce5] bg-[#fafafa] flex items-center justify-end gap-2">
+          <button type="button" onClick={onClose} className="h-[34px] min-w-[122px] rounded-[3px] border border-[#667085] bg-white text-[#667085] text-base">Cancel</button>
+          <button type="button" onClick={onSave} disabled={saving} className="h-[34px] min-w-[104px] rounded-[3px] bg-[#174bb8] text-white text-base font-semibold">{saving ? 'Saving...' : 'Save'}</button>
         </div>
       </div>
     </div>
   );
 }
 
+function CityModal({ editing, regions, onClose, onSaved }) {
+  const [form, setForm] = useState({
+    region: editing?.region?._id || editing?.region || '',
+    name: editing?.name || '',
+  });
+  const [saving, setSaving] = useState(false);
+  const set = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
+
+  const save = async () => {
+    if (!form.region) return alert('Region is required');
+    if (!form.name.trim()) return alert('Name is required');
+    setSaving(true);
+    try {
+      if (editing) await api.put(`/route-management/cities/${editing._id}`, form);
+      else await api.post('/route-management/cities', form);
+      onSaved();
+    } catch (e) {
+      alert(e.response?.data?.message || 'Error saving city');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <RouteDialog title={editing ? 'Edit City' : 'Create City'} onClose={onClose} onSave={save} saving={saving}>
+      <div className="space-y-4">
+        <div>
+          <label className="so-label text-base">Region<span className="text-red-500">*</span></label>
+          <select className="so-input so-select w-[286px]" value={form.region} onChange={(event) => set('region', event.target.value)}>
+            <option value="">Select Region</option>
+            {regions.map((region) => <option key={region._id} value={region._id}>{region.name}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="so-label text-base">Name<span className="text-red-500">*</span></label>
+          <input className="so-input w-full" value={form.name} onChange={(event) => set('name', event.target.value)} placeholder="Name" autoFocus />
+        </div>
+      </div>
+    </RouteDialog>
+  );
+}
+
 export default function Cities() {
-  const [cities,      setCities]      = useState([]);
-  const [regions,     setRegions]     = useState([]);
-  const [loading,     setLoading]     = useState(true);
-  const [search,      setSearch]      = useState('');
-  const [regionFilter,setRegionFilter]= useState('');
-  const [modal,       setModal]       = useState(false);
-  const [editing,     setEditing]     = useState(null);
+  const [cities, setCities] = useState([]);
+  const [regions, setRegions] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [regionFilter, setRegionFilter] = useState('');
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editing, setEditing] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [c, r] = await Promise.all([
+      const [cityRes, regionRes] = await Promise.all([
         api.get('/route-management/cities', { params: { region: regionFilter || undefined } }),
         api.get('/route-management/regions'),
       ]);
-      setCities(c.data); setRegions(r.data);
-    } finally { setLoading(false); }
+      setCities(Array.isArray(cityRes.data) ? cityRes.data : []);
+      setRegions(Array.isArray(regionRes.data) ? regionRes.data : []);
+    } finally {
+      setLoading(false);
+    }
   }, [regionFilter]);
+
   useEffect(() => { load(); }, [load]);
 
-  const openAdd  = () => { setEditing(null); setModal(true); };
-  const openEdit = (c) => { setEditing(c); setModal(true); };
-  const remove   = async (id) => { if (!confirm('Delete city?')) return; await api.delete(`/route-management/cities/${id}`); load(); };
+  const displayed = useMemo(() => (
+    cities.filter((city) => !search || city.name?.toLowerCase().includes(search.toLowerCase()))
+  ), [cities, search]);
 
-  const displayed = cities.filter(c => !search || c.name.toLowerCase().includes(search.toLowerCase()));
+  const openAdd = () => { setEditing(null); setModalOpen(true); };
+  const openEdit = (city) => { setEditing(city); setModalOpen(true); };
+  const remove = async (id) => {
+    if (!confirm('Delete city?')) return;
+    await api.delete(`/route-management/cities/${id}`);
+    load();
+  };
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-4">
-        <h1 className="text-base font-semibold text-[#333]">Cities</h1>
-        <div className="flex gap-2">
-          <button className="so-btn-secondary flex items-center gap-1.5 text-xs"><Download size={13} /> Export</button>
-          <button className="so-btn-secondary flex items-center gap-1.5 text-xs"><Upload size={13} /> Import</button>
-          <button onClick={openAdd} className="so-btn-primary flex items-center gap-1.5 text-xs"><Plus size={13} /> New</button>
-        </div>
+    <div className="so-module-page">
+      <div className="so-titlebar">
+        <h1 className="so-title">Cities</h1>
+        <button type="button" onClick={openAdd} className="so-btn-primary text-sm">+ New</button>
       </div>
 
-      <div className="flex flex-wrap gap-2 mb-4 items-center">
-        <div className="relative">
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search" className="so-input w-44 pr-9" />
-          <Search size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#9e9e9e]" />
+      <div className="so-filterbar">
+        <div className="so-search-group">
+          <input className="so-input" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search" />
+          <button type="button" onClick={load} className="so-search-button"><Search size={18} /></button>
         </div>
-        <select value={regionFilter} onChange={e => setRegionFilter(e.target.value)} className="so-input w-40 text-xs">
-          <option value="">All Regions</option>
-          {regions.map(r => <option key={r._id} value={r._id}>{r.name}</option>)}
+        <select className="so-input so-select w-[240px]" value={regionFilter} onChange={(event) => setRegionFilter(event.target.value)}>
+          <option value="">Select Region</option>
+          {regions.map((region) => <option key={region._id} value={region._id}>{region.name}</option>)}
         </select>
-        <span className="ml-auto text-xs text-[#9e9e9e]">{displayed.length} cities</span>
       </div>
 
-      <div className="so-table-wrap">
-        <table className="so-table">
-          <thead>
-            <tr>
-              <th className="w-12">S.No</th>
-              <th>City Name</th>
-              <th>Region</th>
-              <th>State</th>
-              <th>Pincode</th>
-              <th className="w-20 text-center">Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading && <tr><td colSpan={6} className="text-center py-10 text-[#9e9e9e]">Loading…</td></tr>}
-            {!loading && displayed.length === 0 && (
-              <tr><td colSpan={6} className="text-center py-10 text-[#9e9e9e]">
-                No cities yet. <button onClick={openAdd} className="text-[#1e88e5] hover:underline">Add one</button>
-              </td></tr>
-            )}
-            {displayed.map((c, idx) => (
-              <tr key={c._id}>
-                <td className="text-[#9e9e9e] text-center">{idx + 1}</td>
-                <td className="font-medium text-[#333]">{c.name}</td>
-                <td>{c.region?.name || '—'}</td>
-                <td>{c.state || '—'}</td>
-                <td><span className="font-mono text-xs">{c.pincode || '—'}</span></td>
-                <td>
-                  <div className="flex gap-1 justify-center">
-                    <button onClick={() => openEdit(c)} className="so-icon-btn w-7 h-7"><Edit2 size={12} /></button>
-                    <button onClick={() => remove(c._id)} className="so-icon-btn w-7 h-7 text-red-400 hover:bg-red-50"><Trash2 size={12} /></button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      {loading ? (
+        <div className="so-empty"><p>Loading...</p></div>
+      ) : displayed.length === 0 ? (
+        <div className="so-empty">
+          <div className="so-empty-illustration" />
+          <p>Sorry! No cities found.</p>
+        </div>
+      ) : (
+        <div className="so-table-panel">
+          <table className="so-table">
+            <thead>
+              <tr><th className="w-[165px]">S.No</th><th>Name</th><th>Region</th><th className="w-[330px]">Action</th></tr>
+            </thead>
+            <tbody>
+              {displayed.map((city, index) => (
+                <tr key={city._id}>
+                  <td>{index + 1}</td>
+                  <td>{city.name}</td>
+                  <td>{city.region?.name || '-'}</td>
+                  <td>
+                    <div className="flex gap-3">
+                      <button type="button" onClick={() => openEdit(city)} className="so-icon-btn !w-10 !h-10"><Edit2 size={16} /></button>
+                      <button type="button" onClick={() => remove(city._id)} className="so-icon-btn !w-10 !h-10"><Trash2 size={16} /></button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
-      {modal && (
-        <Modal
+      {modalOpen && (
+        <CityModal
           editing={editing}
           regions={regions}
-          onClose={() => { setModal(false); setEditing(null); }}
-          onSave={() => { setModal(false); setEditing(null); load(); }}
+          onClose={() => { setModalOpen(false); setEditing(null); }}
+          onSaved={() => { setModalOpen(false); setEditing(null); load(); }}
         />
       )}
     </div>
