@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { Search, Edit2, UserX, RefreshCw, Shield, Plus, Check, Upload } from 'lucide-react';
+import { Search, Edit2, RefreshCw, Shield, Check, Upload, Settings, X } from 'lucide-react';
 import api from '../api/axios';
 import SlidePanel from '../components/common/SlidePanel';
 import { useAuth } from '../context/AuthContext';
@@ -55,6 +55,52 @@ const parseCSV = (text) => {
   });
 };
 
+function UserSettingsModal({ customFields, setCustomFields, saving, onClose, onSave }) {
+  const addCustomField = () => setCustomFields((fields) => [...fields, { label: '' }]);
+  const updateCustomField = (index, value) => setCustomFields((fields) => fields.map((field, idx) => (idx === index ? { ...field, label: value } : field)));
+  const removeCustomField = (index) => setCustomFields((fields) => fields.filter((_, idx) => idx !== index));
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center pt-[168px]">
+      <div className="absolute inset-0 bg-black/45" onClick={onClose} />
+      <div className="relative w-[min(624px,calc(100vw-32px))] bg-white rounded-[3px] border border-[#d7dce5] shadow-2xl">
+        <div className="h-[66px] flex items-center justify-between px-5 border-b border-[#eceff4]">
+          <h2 className="text-xl font-semibold text-[#202733]">User Settings</h2>
+          <button type="button" onClick={onClose} className="text-[#777] hover:text-[#111]">
+            <X size={22} strokeWidth={3} />
+          </button>
+        </div>
+        <div className="px-5 py-5 min-h-[84px] border-b border-[#eceff4]">
+          {customFields.length > 0 && (
+            <div className="space-y-2 mb-3">
+              {customFields.map((field, index) => (
+                <div key={index} className="flex items-center gap-2">
+                  <input
+                    className="so-input flex-1"
+                    value={field.label}
+                    onChange={(event) => updateCustomField(index, event.target.value)}
+                    placeholder="Custom field name"
+                  />
+                  <button type="button" onClick={() => removeCustomField(index)} className="h-9 w-9 rounded-[3px] bg-[#f8fafc] text-[#111827] inline-flex items-center justify-center">
+                    <X size={17} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+          <button type="button" onClick={addCustomField} className="mx-auto flex items-center justify-center text-[#005bd3] text-base underline underline-offset-2">
+            + Add custom field
+          </button>
+        </div>
+        <div className="h-[66px] px-5 bg-[#fafafa] flex items-center justify-end gap-2">
+          <button type="button" onClick={onClose} className="h-[34px] min-w-[122px] rounded-[3px] border border-[#667085] bg-white text-[#667085] text-base">Cancel</button>
+          <button type="button" onClick={onSave} disabled={saving} className="h-[34px] min-w-[104px] rounded-[3px] bg-[#174bb8] text-white text-base font-semibold">{saving ? 'Saving...' : 'Save'}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Employees() {
   const { user } = useAuth();
   const isAdmin = ['admin', 'super_admin'].includes(user?.role);
@@ -67,6 +113,10 @@ export default function Employees() {
   const [editing, setEditing] = useState(null);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState(emptyForm());
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsSaving, setSettingsSaving] = useState(false);
+  const [settingsDoc, setSettingsDoc] = useState(null);
+  const [customFields, setCustomFields] = useState([]);
   const importRef = useRef(null);
 
   // Group modules by section for the permissions UI
@@ -97,6 +147,19 @@ export default function Employees() {
     }
   };
   useEffect(() => { fetchData(); }, []);
+
+  const fetchUserSettings = async () => {
+    try {
+      const { data } = await api.get('/settings');
+      setSettingsDoc(data);
+      const fields = data?.userSettings?.customFields;
+      setCustomFields(Array.isArray(fields) ? fields : JSON.parse(localStorage.getItem('userCustomFields') || '[]'));
+    } catch (error) {
+      setCustomFields(JSON.parse(localStorage.getItem('userCustomFields') || '[]'));
+    }
+  };
+
+  useEffect(() => { fetchUserSettings(); }, []);
 
   const filtered = employees.filter((e) =>
     (!roleFilter || e.role === roleFilter) &&
@@ -216,40 +279,71 @@ export default function Employees() {
 
   const roleLabel = (role) => USER_ROLES.find((r) => r.value === role)?.label || role;
 
+  const saveUserSettings = async () => {
+    const fields = customFields
+      .map((field) => ({ label: field.label?.trim() || '' }))
+      .filter((field) => field.label);
+    setSettingsSaving(true);
+    try {
+      const payload = {
+        ...(settingsDoc || {}),
+        userSettings: { ...(settingsDoc?.userSettings || {}), customFields: fields },
+      };
+      const { data } = await api.put('/settings', payload);
+      setSettingsDoc(data);
+      setCustomFields(fields);
+      localStorage.setItem('userCustomFields', JSON.stringify(fields));
+      setSettingsOpen(false);
+    } catch (error) {
+      localStorage.setItem('userCustomFields', JSON.stringify(fields));
+      setCustomFields(fields);
+      setSettingsOpen(false);
+    } finally {
+      setSettingsSaving(false);
+    }
+  };
+
+  const toggleActive = async (emp) => {
+    try {
+      await api.put(`/employees/${emp._id}`, { isActive: emp.isActive === false });
+      fetchData();
+    } catch (e) {
+      alert(e.response?.data?.message || 'Could not update status');
+    }
+  };
+
   return (
-    <div className="p-5">
+    <div className="so-module-page">
       {/* Header */}
-      <div className="flex items-center justify-between mb-5">
-        <div>
-          <h1 className="text-base font-semibold text-[#333]">Users & Roles</h1>
-          <p className="text-xs text-[#757575] mt-0.5">Add team members and control exactly what each person can see in the sidebar</p>
-        </div>
+      <div className="so-titlebar">
+        <h1 className="so-title">Users</h1>
         {isAdmin && (
-          <div className="flex items-center gap-2">
-            <button onClick={() => importRef.current?.click()} className="so-btn-secondary flex items-center gap-1.5 text-xs">
-              <Upload size={13} /> Import
+          <div className="so-actions">
+            <button type="button" onClick={() => setSettingsOpen(true)} className="h-10 w-16 rounded-[3px] border border-[#6b7280] bg-white text-[#6b7280] inline-flex items-center justify-center shadow-[0_0_0_2px_rgba(15,23,42,0.12)]">
+              <Settings size={20} />
             </button>
-            <button onClick={openAdd} className="so-btn-primary flex items-center gap-1.5">
-              <Plus size={15} /> Add User
+            <button type="button" onClick={() => importRef.current?.click()} className="so-btn-secondary border-[#174bb8] text-[#174bb8] text-sm">
+              <Upload size={15} /> Import
             </button>
+            <button type="button" onClick={openAdd} className="so-btn-primary text-sm">+ New</button>
             <input ref={importRef} type="file" accept=".csv,text/csv" className="hidden" onChange={handleImport} />
           </div>
         )}
       </div>
 
       {/* Search / filters */}
-      <div className="flex flex-wrap items-center gap-2 mb-4">
-        <div className="relative w-72">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9e9e9e]" />
+      <div className="so-filterbar">
+        <div className="so-search-group">
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search by name, email, role…"
-            className="so-input pl-9 w-full"
+            placeholder="Search"
+            className="so-input"
           />
+          <button type="button" onClick={fetchData} className="so-search-button"><Search size={18} /></button>
         </div>
-        <select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)} className="so-input w-52">
-          <option value="">Select User Type</option>
+        <select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)} className="so-input so-select w-[240px]">
+          <option value="">Select User type</option>
           {USER_ROLES.map((role) => (
             <option key={role.value} value={role.value}>{role.label}</option>
           ))}
@@ -257,13 +351,13 @@ export default function Employees() {
       </div>
 
       {/* Table */}
-      <div className="so-table-wrap">
-        <table className="so-table">
+      <div className="so-table-panel min-h-[556px]">
+        <table className="so-table so-users-table">
           <thead>
             <tr>
-              <th>#</th><th>Name</th><th>Role</th><th>Department</th>
-              <th>Sidebar Access</th><th>Status</th>
-              {isAdmin && <th className="w-16"></th>}
+              <th className="w-[130px]">Id</th><th>User Name</th><th>Mobile</th><th>Email</th>
+              <th>Role</th><th>Status</th>
+              {isAdmin && <th className="w-[80px]"></th>}
             </tr>
           </thead>
           <tbody>
@@ -273,17 +367,16 @@ export default function Employees() {
             )}
             {filtered.map((emp, idx) => (
               <tr key={emp._id}>
-                <td className="text-[#9e9e9e]">{idx + 1}</td>
+                <td>{idx + 1}</td>
+                <td><button type="button" onClick={() => openEdit(emp)} className="text-[#006dff] hover:underline">{emp.name}</button></td>
+                <td>{emp.phone || ''}</td>
+                <td>{emp.email || ''}</td>
+                <td><span className="so-badge so-badge-info capitalize">{roleLabel(emp.role)}</span></td>
                 <td>
-                  <p className="font-medium text-[#333]">{emp.name}</p>
-                  <p className="text-xs text-[#9e9e9e]">{emp.email}</p>
-                  {emp.jobTitle && <p className="text-xs text-[#1e88e5]">{emp.jobTitle}</p>}
-                </td>
-                <td>
-                  <span className="so-badge so-badge-info">{roleLabel(emp.role)}</span>
+                  <button type="button" onClick={() => toggleActive(emp)} className={`so-switch ${emp.isActive !== false ? 'so-switch-on' : ''}`} aria-label="Toggle user status" />
                 </td>
                 <td className="text-[#757575]">{emp.department || '—'}</td>
-                <td>
+                <td className="hidden">
                   {emp.useCustomAccess ? (
                     <span className="flex items-center gap-1 text-xs text-purple-700 bg-purple-50 px-2 py-1 rounded w-fit">
                       <Shield size={11} /> Custom ({emp.allowedModules?.length || 0} modules)
@@ -292,19 +385,14 @@ export default function Employees() {
                     <span className="text-xs text-[#757575]">Role defaults</span>
                   )}
                 </td>
-                <td>
+                <td className="hidden">
                   <span className={`so-badge ${emp.isActive !== false ? 'so-badge-success' : 'so-badge-danger'}`}>
                     {emp.isActive !== false ? 'Active' : 'Inactive'}
                   </span>
                 </td>
                 {isAdmin && (
                   <td>
-                    <div className="flex gap-1">
-                      <button onClick={() => openEdit(emp)} className="so-icon-btn" title="Edit"><Edit2 size={13} /></button>
-                      {emp.isActive !== false && (
-                        <button onClick={() => deactivate(emp)} className="so-icon-btn text-red-400 hover:bg-red-50" title="Deactivate"><UserX size={13} /></button>
-                      )}
-                    </div>
+                    <button type="button" onClick={() => openEdit(emp)} className="so-icon-btn !w-10 !h-10" title="Edit"><Edit2 size={16} /></button>
                   </td>
                 )}
               </tr>
@@ -314,6 +402,16 @@ export default function Employees() {
       </div>
 
       {/* ── Slide Panel ── */}
+      {settingsOpen && (
+        <UserSettingsModal
+          customFields={customFields}
+          setCustomFields={setCustomFields}
+          saving={settingsSaving}
+          onClose={() => setSettingsOpen(false)}
+          onSave={saveUserSettings}
+        />
+      )}
+
       <SlidePanel
         open={panelOpen}
         onClose={() => setPanelOpen(false)}

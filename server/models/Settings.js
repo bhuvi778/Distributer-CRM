@@ -70,6 +70,10 @@ const settingsSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.Mixed,
     default: {},
   },
+  userSettings: {
+    type: mongoose.Schema.Types.Mixed,
+    default: {},
+  },
   defaultTransactionState: { type: String, default: 'draft' },
 }, { timestamps: true });
 

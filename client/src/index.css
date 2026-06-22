@@ -530,6 +530,11 @@
     height: 43px;
     color: #d6d9df;
   }
+  .so-users-table tbody td:nth-child(7),
+  .so-users-table tbody td:nth-child(8),
+  .so-users-table tbody td:nth-child(9) {
+    display: none;
+  }
   .so-form-section-title {
     min-height: 40px;
     background: #f1f4fc;
