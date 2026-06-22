@@ -32,7 +32,7 @@ export const SALESON_NAV_DEF = [
     items: [
       { path: '/app/inventory/items',      moduleId: 'inventory-items',      label: 'Items' },
       { path: '/app/inventory/warehouses', moduleId: 'inventory-warehouses', label: 'Warehouses' },
-      { path: '/app/inventory/price-list', moduleId: 'inventory-pricelist',  label: 'Price List' },
+      { path: '/app/inventory/price-list', moduleId: 'inventory-pricelist',  label: 'Price Lists' },
       { path: '/app/inventory/transfers',  moduleId: 'inventory-transfers',  label: 'Transfer Orders' },
     ],
   },  {

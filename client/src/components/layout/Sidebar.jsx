@@ -1,19 +1,16 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { ChevronDown, ChevronRight, Settings, LogOut } from 'lucide-react';
+import { Link, useLocation } from 'react-router-dom';
+import { ChevronDown, ChevronUp, Headphones, Rocket, Settings } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { canAccessPath } from '../../config/roles';
 import { getSalesOnNav, isNavActive, isGroupOpen } from '../../config/salesonNav';
 
 export default function Sidebar() {
   const location = useLocation();
-  const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const nav = useMemo(() => getSalesOnNav(user, canAccessPath), [user]);
-
   const [openGroups, setOpenGroups] = useState({});
 
-  // Auto-open the group that matches current path
   useEffect(() => {
     nav.forEach((item) => {
       if (item.type === 'group' && isGroupOpen(location.pathname, item)) {
@@ -22,44 +19,28 @@ export default function Sidebar() {
     });
   }, [location.pathname, nav]);
 
-  // Toggle: close all others, open the clicked one (accordion behavior)
   const toggleGroup = (id) => {
-    setOpenGroups((prev) => {
-      const isCurrentlyOpen = prev[id];
-      // Close all, then toggle the clicked one
-      const allClosed = Object.keys(prev).reduce((acc, key) => ({ ...acc, [key]: false }), {});
-      return { ...allClosed, [id]: !isCurrentlyOpen };
-    });
-  };
-
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
+    setOpenGroups((prev) => ({ ...prev, [id]: !(prev[id] ?? false) }));
   };
 
   return (
-    <aside className="fixed left-0 top-0 h-full w-[220px] bg-white border-r border-[#e0e0e0] z-40 flex flex-col shadow-sm">
-      {/* Logo — SalesOn style */}
-      <div className="px-4 py-3.5 border-b border-[#e0e0e0]">
-        <Link to="/app/dashboard" className="flex items-center gap-2 no-underline">
-          <span className="text-[22px] font-bold text-[#1e88e5] tracking-tight leading-none">SalesOn</span>
+    <aside className="fixed left-0 top-0 h-full w-[250px] bg-white border-r border-[#e2e2e2] z-40 flex flex-col">
+      <div className="h-[65px] px-7 border-b border-[#ededed] flex items-center">
+        <Link to="/app/dashboard" className="flex items-center gap-3 no-underline">
+          <span className="so-logo-mark" aria-hidden="true" />
+          <span className="text-[30px] font-semibold text-[#174bb8] tracking-tight leading-none">SalesOn</span>
         </Link>
       </div>
 
-      <nav className="flex-1 overflow-y-auto py-1">
+      <nav className="flex-1 overflow-y-auto py-3">
         {nav.map((item) => {
           if (item.type === 'link') {
             const Icon = item.icon;
             const active = location.pathname === item.path;
             return (
-              <Link
-                key={item.path}
-                to={item.path}
-                className={`so-nav-link ${active ? 'so-nav-link-active' : ''}`}
-              >
-                <Icon size={17} strokeWidth={1.75} className={active ? 'text-[#1e88e5]' : 'text-[#616161]'} />
+              <Link key={item.path} to={item.path} className={`so-nav-link ${active ? 'so-nav-link-active' : ''}`}>
+                <Icon size={18} strokeWidth={1.55} className={active ? 'text-[#174bb8]' : 'text-[#303030]'} />
                 <span className="flex-1">{item.label}</span>
-                {item.badge && <span className="so-badge-new">{item.badge}</span>}
               </Link>
             );
           }
@@ -69,25 +50,25 @@ export default function Sidebar() {
           const isOpen = openGroups[item.id] ?? false;
 
           return (
-            <div key={item.id}>
+            <div key={item.id} className="mb-2">
               <button
                 type="button"
                 onClick={() => toggleGroup(item.id)}
-                className={`so-nav-group-btn w-full ${groupActive ? 'so-nav-group-btn-active' : ''}`}
+                className={`so-nav-group-btn ${groupActive ? 'so-nav-group-btn-active' : ''}`}
               >
-                <span className="flex items-center gap-2.5 flex-1">
-                  <Icon size={17} strokeWidth={1.75} className={groupActive ? 'text-[#1e88e5]' : 'text-[#616161]'} />
+                <span className="flex items-center gap-3">
+                  <Icon size={18} strokeWidth={1.55} className={groupActive ? 'text-[#174bb8]' : 'text-[#303030]'} />
                   <span>{item.label}</span>
                 </span>
-                {isOpen ? <ChevronDown size={15} className="text-[#9e9e9e]" /> : <ChevronRight size={15} className="text-[#9e9e9e]" />}
+                {isOpen ? <ChevronUp size={17} /> : <ChevronDown size={17} />}
               </button>
               {isOpen && (
-                <div className="bg-[#fafafa] border-b border-[#f0f0f0]">
+                <div className="py-1">
                   {item.items.map((sub) => (
                     <Link
                       key={sub.path}
                       to={sub.path}
-                      className={`so-nav-sub block ${location.pathname === sub.path ? 'so-nav-sub-active' : ''}`}
+                      className={`so-nav-sub ${location.pathname === sub.path ? 'so-nav-sub-active' : ''}`}
                     >
                       {sub.label}
                     </Link>
@@ -99,25 +80,21 @@ export default function Sidebar() {
         })}
       </nav>
 
-      <div className="border-t border-[#e0e0e0] mt-auto">
+      <div className="border-t border-[#ededed] bg-white">
+        <div className="mx-1.5 my-3 rounded-md bg-[#e60000] text-white px-3 py-3 flex gap-2 items-center text-sm font-semibold leading-snug">
+          <Rocket size={21} />
+          <span>Pro Trial plan expires in 7 days | Upgrade Now</span>
+        </div>
         {canAccessPath(user, '/app/settings') && (
-          <Link
-            to="/app/settings"
-            className={`so-nav-link ${location.pathname === '/app/settings' ? 'so-nav-link-active' : ''}`}
-          >
-            <Settings size={17} strokeWidth={1.75} className="text-[#616161]" />
+          <Link to="/app/settings" className={`so-nav-link ${location.pathname === '/app/settings' ? 'so-nav-link-active' : ''}`}>
+            <Settings size={18} strokeWidth={1.55} />
             <span>Settings</span>
           </Link>
         )}
-        <button
-          type="button"
-          onClick={handleLogout}
-          className="so-nav-link w-full border-0 bg-transparent cursor-pointer text-left"
-        >
-          <LogOut size={17} strokeWidth={1.75} className="text-[#616161]" />
-          <span>Logout</span>
-        </button>
-        <p className="px-4 pb-3 pt-1 text-[11px] text-[#9e9e9e]">+91 8092856577</p>
+        <div className="h-[52px] px-8 border-t border-[#ededed] flex items-center gap-2 text-[#174bb8] font-semibold">
+          <Headphones size={23} />
+          <span>+91 8092856577</span>
+        </div>
       </div>
     </aside>
   );

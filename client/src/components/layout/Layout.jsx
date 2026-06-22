@@ -6,9 +6,9 @@ export default function Layout() {
   return (
     <div className="min-h-screen bg-[#f0f2f5]">
       <Sidebar />
-      <div className="ml-[220px]">
+      <div className="ml-[250px]">
         <TopBar />
-        <main className="p-4">
+        <main className="p-0">
           <Outlet />
         </main>
       </div>

@@ -1,17 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
-import { Plus, Edit2, Download, Upload } from 'lucide-react';
+import { Download, Edit2, Plus, Search, Upload } from 'lucide-react';
 import api from '../../api/axios';
 import SlidePanel from '../../components/common/SlidePanel';
 import { exportToExcel } from '../../utils/exportExcel';
 import useIndiaLocations from '../../hooks/useIndiaLocations';
-
-const WAREHOUSE_TYPES = [
-  { value: 'primary', label: 'Primary' },
-  { value: 'secondary', label: 'Secondary' },
-  { value: 'transit', label: 'Transit' },
-  { value: 'retail', label: 'Retail' },
-  { value: 'virtual', label: 'Virtual' },
-];
 
 const emptyForm = {
   name: '',
@@ -26,19 +18,10 @@ const emptyForm = {
 };
 
 const EXPORT_COLS = [
-  { key: 'name', label: 'Warehouse Name', accessor: 'name' },
-  { key: 'code', label: 'Code', accessor: 'code' },
-  { key: 'type', label: 'Type', accessor: 'type' },
-  { key: 'gstin', label: 'GST', accessor: 'gstin' },
+  { key: 'name', label: 'Name', accessor: 'name' },
   { key: 'address', label: 'Address', accessor: 'address.street' },
-  { key: 'city', label: 'City', accessor: 'address.city' },
-  { key: 'state', label: 'State', accessor: 'address.state' },
-  { key: 'pincode', label: 'Pincode', accessor: 'address.pincode' },
-  { key: 'phone', label: 'Phone', accessor: 'phone' },
-  { key: 'email', label: 'Email', accessor: 'email' },
-  { key: 'status', label: 'Status', accessor: 'isActive', renderExport: (v) => v !== false ? 'Active' : 'Inactive' },
-  { key: 'skus', label: 'SKUs', accessor: 'stockCount' },
-  { key: 'qty', label: 'Total Qty', accessor: 'totalQuantity' },
+  { key: 'status', label: 'Status', accessor: 'isActive', renderExport: (v) => (v !== false ? 'Active' : 'Inactive') },
+  { key: 'primary', label: 'Primary', accessor: 'type' },
 ];
 
 const parseCSV = (text) => {
@@ -60,7 +43,7 @@ const parseCSV = (text) => {
         state: row.state,
         pincode: row.pincode,
       },
-      phone: row.phone,
+      phone: row.phone || row.mobile,
       email: row.email,
       isActive: !['inactive', 'false', 'no'].includes(String(row.status || '').toLowerCase()),
       notes: row.notes,
@@ -71,34 +54,49 @@ const parseCSV = (text) => {
 export default function Warehouses() {
   const [warehouses, setWarehouses] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
   const [panelOpen, setPanelOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(emptyForm);
   const importRef = useRef(null);
-  const { states, cities, loadingCities } = useIndiaLocations(form.address?.state);
+  const { states } = useIndiaLocations(form.address?.state);
 
   const load = async () => {
     setLoading(true);
     try {
       const { data } = await api.get('/inventory/warehouses');
-      setWarehouses(data);
+      setWarehouses(data || []);
     } finally {
       setLoading(false);
     }
   };
+
   useEffect(() => { load(); }, []);
 
-  const openAdd = () => { setEditing(null); setForm(emptyForm); setPanelOpen(true); };
-  const openEdit = (w) => {
-    setEditing(w);
-    setForm({ ...emptyForm, ...w, address: { ...emptyForm.address, ...(w.address || {}) } });
+  const filtered = warehouses.filter((warehouse) => {
+    const term = search.trim().toLowerCase();
+    if (!term) return true;
+    return [warehouse.name, warehouse.address?.street, warehouse.address?.city, warehouse.address?.state]
+      .filter(Boolean)
+      .some((value) => value.toLowerCase().includes(term));
+  });
+
+  const openAdd = () => {
+    setEditing(null);
+    setForm(emptyForm);
+    setPanelOpen(true);
+  };
+
+  const openEdit = (warehouse) => {
+    setEditing(warehouse);
+    setForm({ ...emptyForm, ...warehouse, address: { ...emptyForm.address, ...(warehouse.address || {}) } });
     setPanelOpen(true);
   };
 
   const save = async () => {
-    if (!form.name) return alert('Warehouse name is required');
+    if (!form.name) return alert('Name is required');
     if (!form.address?.street) return alert('Address is required');
-    if (!form.address?.state) return alert('State is required');
+    if (!form.address?.state) return alert('State of supply is required');
     try {
       if (editing) await api.put(`/inventory/warehouses/${editing._id}`, form);
       else await api.post('/inventory/warehouses', form);
@@ -109,9 +107,8 @@ export default function Warehouses() {
     }
   };
 
-  const f = (k, v) => setForm(p => ({ ...p, [k]: v }));
-  const fa = (k, v) => setForm(p => ({ ...p, address: { ...p.address, [k]: v } }));
-  const setState = (state) => setForm(p => ({ ...p, address: { ...p.address, state, city: '' } }));
+  const f = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
+  const fa = (key, value) => setForm((prev) => ({ ...prev, address: { ...prev.address, [key]: value } }));
 
   const handleImport = async (event) => {
     const file = event.target.files?.[0];
@@ -132,60 +129,49 @@ export default function Warehouses() {
   const exportOne = (warehouse) => exportToExcel([warehouse], `warehouse_${warehouse.code || warehouse.name}`, EXPORT_COLS);
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-5">
-        <div>
-          <h1 className="text-base font-semibold text-[#333]">Warehouses</h1>
-          <p className="text-xs text-[#757575] mt-0.5">Manage storage locations and track stock per warehouse</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <button onClick={() => importRef.current?.click()} className="so-btn-secondary flex items-center gap-1.5 text-xs"><Upload size={13} /> Import</button>
-          <button onClick={() => exportToExcel(warehouses, 'warehouses', EXPORT_COLS)} className="so-btn-secondary flex items-center gap-1.5 text-xs"><Download size={13} /> Export All</button>
-          <button onClick={openAdd} className="so-btn-primary flex items-center gap-1.5"><Plus size={15} /> Add Warehouse</button>
+    <div className="so-module-page">
+      <div className="so-titlebar">
+        <h1 className="so-title">Warehouse</h1>
+        <div className="so-actions">
+          <button type="button" onClick={() => importRef.current?.click()} className="so-btn-secondary border-[#174bb8] text-[#174bb8] text-lg"><Upload size={18} /> Import</button>
+          <button type="button" onClick={openAdd} className="so-btn-primary text-lg"><Plus size={18} /> New</button>
           <input ref={importRef} type="file" accept=".csv,text/csv" className="hidden" onChange={handleImport} />
         </div>
       </div>
 
-      <div className="so-table-wrap">
+      <div className="so-filterbar">
+        <div className="so-search-group">
+          <input className="so-input" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search" />
+          <button type="button" className="so-search-button"><Search size={21} /></button>
+        </div>
+      </div>
+
+      <div className="so-table-panel !mt-3">
         <table className="so-table">
           <thead>
             <tr>
-              <th>Warehouse Name</th>
-              <th>Code</th>
-              <th>Type</th>
-              <th>GST</th>
+              <th className="w-[82px]">S.No</th>
+              <th>Name</th>
               <th>Address</th>
-              <th>Phone</th>
-              <th>SKUs</th>
-              <th>Total Qty</th>
               <th>Status</th>
-              <th className="w-20"></th>
+              <th>Primary</th>
+              <th className="w-[132px]"></th>
             </tr>
           </thead>
           <tbody>
-            {loading && <tr><td colSpan={10} className="text-center py-10 text-[#9e9e9e]">Loading...</td></tr>}
-            {!loading && warehouses.length === 0 && (
-              <tr><td colSpan={10} className="text-center py-10 text-[#9e9e9e]">No warehouses added yet. Click "Add Warehouse" to create one.</td></tr>
-            )}
-            {warehouses.map(wh => (
-              <tr key={wh._id}>
-                <td className="font-medium text-[#333]">{wh.name}</td>
-                <td><span className="font-mono text-xs">{wh.code || '-'}</span></td>
-                <td className="capitalize">{wh.type || 'primary'}</td>
-                <td><span className="font-mono text-xs">{wh.gstin || '-'}</span></td>
-                <td className="text-[#757575]">{[wh.address?.street, wh.address?.city, wh.address?.state, wh.address?.pincode].filter(Boolean).join(', ') || '-'}</td>
-                <td>{wh.phone || '-'}</td>
-                <td><span className="font-semibold text-[#333]">{wh.stockCount ?? 0}</span></td>
-                <td><span className="font-semibold text-[#333]">{wh.totalQuantity ?? 0}</span></td>
+            {loading && <tr><td colSpan={6} className="text-center py-10 text-[#98a2b3]">Loading...</td></tr>}
+            {!loading && filtered.length === 0 && <tr><td colSpan={6} className="text-center py-10 text-[#98a2b3]">No Data</td></tr>}
+            {filtered.map((warehouse, index) => (
+              <tr key={warehouse._id}>
+                <td>{index + 1}</td>
+                <td>{warehouse.name}</td>
+                <td>{[warehouse.address?.street, warehouse.address?.city].filter(Boolean).join(', ') || '-'}</td>
+                <td><span className={`so-switch ${warehouse.isActive !== false ? 'so-switch-on' : ''}`} /></td>
+                <td>{warehouse.type === 'primary' && <span className="px-3 py-1 rounded bg-[#07b719] text-white font-semibold">Primary</span>}</td>
                 <td>
-                  <span className={`so-badge ${wh.isActive !== false ? 'so-badge-success' : 'so-badge-danger'}`}>
-                    {wh.isActive !== false ? 'Active' : 'Inactive'}
-                  </span>
-                </td>
-                <td>
-                  <div className="flex gap-1 justify-end">
-                    <button onClick={() => exportOne(wh)} className="so-icon-btn" title="Export Warehouse"><Download size={13} /></button>
-                    <button onClick={() => openEdit(wh)} className="so-icon-btn" title="Edit"><Edit2 size={13} /></button>
+                  <div className="flex justify-center gap-2">
+                    <button type="button" onClick={() => exportOne(warehouse)} className="so-icon-btn !w-10 !h-10"><Download size={17} /></button>
+                    <button type="button" onClick={() => openEdit(warehouse)} className="so-icon-btn !w-10 !h-10"><Edit2 size={17} /></button>
                   </div>
                 </td>
               </tr>
@@ -194,49 +180,63 @@ export default function Warehouses() {
         </table>
       </div>
 
-      <SlidePanel open={panelOpen} onClose={() => setPanelOpen(false)} title={editing ? 'Edit Warehouse' : 'Add Warehouse'}>
-        <div className="space-y-3">
-          <div><label className="so-label">Warehouse Name *</label><input className="so-input w-full" value={form.name} onChange={e => f('name', e.target.value)} placeholder="Main Warehouse" /></div>
-          <div className="grid grid-cols-2 gap-3">
-            <div><label className="so-label">Code</label><input className="so-input w-full" value={form.code} onChange={e => f('code', e.target.value)} placeholder="WH-001" /></div>
-            <div><label className="so-label">GST</label><input className="so-input w-full" value={form.gstin || ''} onChange={e => f('gstin', e.target.value.toUpperCase())} placeholder="GSTIN" /></div>
-            <div><label className="so-label">Type</label>
-              <select className="so-input w-full" value={form.type || 'primary'} onChange={e => f('type', e.target.value)}>
-                {WAREHOUSE_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-              </select>
-            </div>
-            <div><label className="so-label">Status</label>
-              <select className="so-input w-full" value={form.isActive !== false ? 'active' : 'inactive'} onChange={e => f('isActive', e.target.value === 'active')}>
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-              </select>
+      <SlidePanel
+        open={panelOpen}
+        onClose={() => setPanelOpen(false)}
+        title={editing ? 'Edit Warehouse' : 'Create Warehouse'}
+        width="w-[750px]"
+        hideClose
+        bodyClassName="p-4"
+        headerActions={(
+          <>
+            <button type="button" onClick={save} className="so-btn-primary text-lg min-w-[84px]">Save</button>
+            <button type="button" onClick={() => setPanelOpen(false)} className="text-lg px-4">Cancel</button>
+          </>
+        )}
+      >
+        <FormSection title="General Details">
+          <div className="space-y-4 p-2">
+            <div className="so-form-grid">
+              <div>
+                <label className="so-label">Name<span className="text-red-500">*</span></label>
+                <input className="so-input w-full" value={form.name} onChange={(e) => f('name', e.target.value)} />
+              </div>
+              <div>
+                <label className="so-label">Mobile</label>
+                <input className="so-input w-full" value={form.phone || ''} onChange={(e) => f('phone', e.target.value)} />
+              </div>
+              <div>
+                <label className="so-label">Address</label>
+                <textarea className="so-input w-full min-h-[90px]" value={form.address?.street || ''} onChange={(e) => fa('street', e.target.value)} autoFocus />
+              </div>
+              <div>
+                <label className="so-label">Email</label>
+                <input className="so-input w-full" value={form.email || ''} onChange={(e) => f('email', e.target.value)} />
+              </div>
+              <div>
+                <label className="so-label">GSTIN</label>
+                <input className="so-input w-full" value={form.gstin || ''} onChange={(e) => f('gstin', e.target.value.toUpperCase())} />
+              </div>
+              <div>
+                <label className="so-label">State of supply</label>
+                <select className="so-input so-select w-full" value={form.address?.state || ''} onChange={(e) => fa('state', e.target.value)}>
+                  <option value="">Select State</option>
+                  {states.map((state) => <option key={state} value={state}>{state}</option>)}
+                </select>
+              </div>
             </div>
           </div>
-          <div><label className="so-label">Address *</label><input className="so-input w-full" value={form.address?.street || ''} onChange={e => fa('street', e.target.value)} /></div>
-          <div className="grid grid-cols-2 gap-3">
-            <div><label className="so-label">State *</label>
-              <select className="so-input w-full" value={form.address?.state || ''} onChange={e => setState(e.target.value)}>
-                <option value="">Select State</option>
-                {states.map(s => <option key={s} value={s}>{s}</option>)}
-              </select>
-            </div>
-            <div><label className="so-label">City</label>
-              <select className="so-input w-full" value={form.address?.city || ''} onChange={e => fa('city', e.target.value)} disabled={!form.address?.state || loadingCities}>
-                <option value="">{loadingCities ? 'Loading cities...' : 'Select City'}</option>
-                {cities.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
-            </div>
-            <div><label className="so-label">Pincode</label><input className="so-input w-full" value={form.address?.pincode || ''} onChange={e => fa('pincode', e.target.value)} /></div>
-            <div><label className="so-label">Phone</label><input className="so-input w-full" value={form.phone} onChange={e => f('phone', e.target.value)} /></div>
-          </div>
-          <div><label className="so-label">Email</label><input className="so-input w-full" value={form.email} onChange={e => f('email', e.target.value)} /></div>
-          <div><label className="so-label">Notes</label><textarea className="so-input w-full" rows={2} value={form.notes} onChange={e => f('notes', e.target.value)} /></div>
-          <div className="flex gap-2 pt-3 border-t border-[#f0f0f0]">
-            <button onClick={save} className="so-btn-primary flex-1">Save Warehouse</button>
-            <button onClick={() => setPanelOpen(false)} className="so-btn-secondary flex-1">Cancel</button>
-          </div>
-        </div>
+        </FormSection>
       </SlidePanel>
     </div>
+  );
+}
+
+function FormSection({ title, children }) {
+  return (
+    <section>
+      <div className="so-form-section-title">{title}</div>
+      {children}
+    </section>
   );
 }

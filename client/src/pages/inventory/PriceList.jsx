@@ -1,324 +1,212 @@
-import { useState, useEffect, useRef } from 'react';
-import { Plus, Edit2, X, Upload, Download } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Archive, Edit2, Plus } from 'lucide-react';
 import api from '../../api/axios';
-import SlidePanel from '../../components/common/SlidePanel';
-import { exportToExcel } from '../../utils/exportExcel';
 
 const PRICING_TYPES = [
+  { value: 'fixed', label: 'Fixed' },
   { value: 'markup', label: 'Markup %' },
   { value: 'markdown', label: 'Markdown %' },
-  { value: 'fixed', label: 'Fixed' },
 ];
 
 const emptyForm = {
   name: '',
-  code: '',
-  applicableTo: 'all',
+  notes: '',
   pricingType: 'fixed',
+  fixedAmount: 0,
   markupPercent: 0,
   markdownPercent: 0,
-  fixedAmount: 0,
-  validFrom: '',
-  validTo: '',
   isActive: true,
   items: [],
-  notes: '',
-};
-
-const EXPORT_COLS = [
-  { key: 'name', label: 'Name', accessor: 'name' },
-  { key: 'code', label: 'Code', accessor: 'code' },
-  { key: 'applicableTo', label: 'Applicable To', accessor: 'applicableTo' },
-  { key: 'pricingType', label: 'Pricing Type', accessor: 'pricingType' },
-  { key: 'markupPercent', label: 'Markup %', accessor: 'markupPercent' },
-  { key: 'markdownPercent', label: 'Markdown %', accessor: 'markdownPercent' },
-  { key: 'fixedAmount', label: 'Fixed Amount', accessor: 'fixedAmount' },
-  { key: 'items', label: 'Items', accessor: 'items', renderExport: (v) => v?.length || 0 },
-  { key: 'status', label: 'Status', accessor: 'isActive', renderExport: (v) => v !== false ? 'Active' : 'Inactive' },
-];
-
-const parseCSV = (text) => {
-  const lines = text.split(/\r?\n/).filter(Boolean);
-  if (lines.length < 2) return [];
-  const parseLine = (line) => line.match(/("([^"]|"")*"|[^,]+)/g)?.map((cell) => cell.replace(/^"|"$/g, '').replace(/""/g, '"').trim()) || [];
-  const headers = parseLine(lines[0]).map((h) => h.toLowerCase().replace(/\s+/g, ''));
-  return lines.slice(1).map((line) => {
-    const cells = parseLine(line);
-    return Object.fromEntries(headers.map((h, idx) => [h, cells[idx] || '']));
-  });
 };
 
 const toNumber = (value) => Number(value || 0);
-
-const basePriceFor = (product) => toNumber(product?.sellingPrice || product?.purchasePrice || product?.mrp || 0);
-
-const calculatePrice = ({ product, pricingType, markupPercent, markdownPercent, fixedAmount }) => {
-  const base = basePriceFor(product);
-  if (pricingType === 'markup') return Math.round(base * (1 + toNumber(markupPercent) / 100) * 100) / 100;
-  if (pricingType === 'markdown') return Math.round(base * (1 - toNumber(markdownPercent) / 100) * 100) / 100;
-  return Math.round(toNumber(fixedAmount || base) * 100) / 100;
-};
 
 export default function PriceList() {
   const [lists, setLists] = useState([]);
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [panelOpen, setPanelOpen] = useState(false);
+  const [createMode, setCreateMode] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(emptyForm);
-  const importRef = useRef(null);
+  const [importEnabled, setImportEnabled] = useState(false);
 
   const load = async () => {
     setLoading(true);
     try {
-      const [l, p] = await Promise.all([api.get('/inventory/price-lists'), api.get('/inventory/items')]);
-      setLists(l.data);
-      setProducts(p.data);
+      const [listRes, productRes] = await Promise.all([
+        api.get('/inventory/price-lists'),
+        api.get('/inventory/items'),
+      ]);
+      setLists(listRes.data || []);
+      setProducts(productRes.data || []);
     } finally {
       setLoading(false);
     }
   };
+
   useEffect(() => { load(); }, []);
 
-  const normalizeItem = (item) => ({
-    ...item,
-    product: item.product?._id || item.product || '',
-    pricingType: item.pricingType || 'fixed',
-    markupPercent: item.markupPercent || 0,
-    markdownPercent: item.markdownPercent || 0,
-    sellingPrice: item.sellingPrice || '',
-    discount: item.discount || 0,
-  });
+  const openAdd = () => {
+    setEditing(null);
+    setForm(emptyForm);
+    setImportEnabled(false);
+    setCreateMode(true);
+  };
 
-  const openAdd = () => { setEditing(null); setForm(emptyForm); setPanelOpen(true); };
-  const openEdit = (l) => { setEditing(l); setForm({ ...emptyForm, ...l, items: (l.items || []).map(normalizeItem) }); setPanelOpen(true); };
+  const openEdit = (list) => {
+    setEditing(list);
+    setForm({
+      ...emptyForm,
+      ...list,
+      items: (list.items || []).map((item) => ({
+        ...item,
+        product: item.product?._id || item.product || '',
+        productName: item.product?.name || item.productName || '',
+      })),
+    });
+    setImportEnabled(false);
+    setCreateMode(true);
+  };
 
-  const f = (k, v) => setForm(p => ({ ...p, [k]: v }));
-  const updateItem = (i, k, v) => setForm(p => ({ ...p, items: p.items.map((it, idx) => idx === i ? { ...it, [k]: v } : it) }));
-  const removeItem = (i) => setForm(p => ({ ...p, items: p.items.filter((_, idx) => idx !== i) }));
-
-  const addItem = () => setForm(p => ({
-    ...p,
-    items: [
-      ...p.items,
-      {
-        product: '',
-        productName: '',
-        pricingType: p.pricingType,
-        markupPercent: p.markupPercent,
-        markdownPercent: p.markdownPercent,
-        sellingPrice: p.fixedAmount || '',
-        discount: 0,
-      },
-    ],
+  const f = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
+  const updateItem = (index, key, value) => setForm((prev) => ({
+    ...prev,
+    items: prev.items.map((item, idx) => (idx === index ? { ...item, [key]: value } : item)),
   }));
-
-  const applyProduct = (i, productId) => {
-    const product = products.find(p => p._id === productId);
-    setForm(p => ({
-      ...p,
-      items: p.items.map((it, idx) => idx === i ? {
-        ...it,
-        product: productId,
-        productName: product?.name || '',
-        sellingPrice: calculatePrice({
-          product,
-          pricingType: it.pricingType || p.pricingType,
-          markupPercent: it.markupPercent ?? p.markupPercent,
-          markdownPercent: it.markdownPercent ?? p.markdownPercent,
-          fixedAmount: it.sellingPrice || p.fixedAmount,
-        }),
-      } : it),
-    }));
-  };
-
-  const recalcItem = (i, patch = {}) => {
-    setForm(p => ({
-      ...p,
-      items: p.items.map((it, idx) => {
-        if (idx !== i) return it;
-        const next = { ...it, ...patch };
-        const product = products.find(prod => prod._id === next.product);
-        return { ...next, sellingPrice: calculatePrice({ product, ...next }) };
-      }),
-    }));
-  };
 
   const save = async () => {
     if (!form.name) return alert('Price list name is required');
     const payload = {
       ...form,
+      fixedAmount: toNumber(form.fixedAmount),
       markupPercent: toNumber(form.markupPercent),
       markdownPercent: toNumber(form.markdownPercent),
-      fixedAmount: toNumber(form.fixedAmount),
-      items: form.items.map((item) => ({
-        ...item,
-        sellingPrice: toNumber(item.sellingPrice),
-        discount: toNumber(item.discount),
-      })),
+      items: form.items.map((item) => ({ ...item, sellingPrice: toNumber(item.sellingPrice), discount: toNumber(item.discount) })),
     };
     try {
       if (editing) await api.put(`/inventory/price-lists/${editing._id}`, payload);
       else await api.post('/inventory/price-lists', payload);
-      setPanelOpen(false);
+      setCreateMode(false);
       load();
     } catch (e) {
       alert(e.response?.data?.message || 'Error');
     }
   };
 
-  const handleImport = async (event) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    try {
-      const rows = parseCSV(await file.text());
-      const grouped = new Map();
-      rows.forEach((row) => {
-        const name = row.pricelistname || row.name;
-        if (!name) return;
-        const key = row.code || name;
-        const product = products.find((p) =>
-          p.sku?.toLowerCase() === row.itemcode?.toLowerCase() ||
-          p.name?.toLowerCase() === row.itemname?.toLowerCase()
-        );
-        const current = grouped.get(key) || {
-          name,
-          code: row.code,
-          applicableTo: row.applicableto || 'all',
-          pricingType: row.pricingtype || 'fixed',
-          markupPercent: toNumber(row.markuppercent || row.markup),
-          markdownPercent: toNumber(row.markdownpercent || row.markdown),
-          fixedAmount: toNumber(row.fixedamount || row.fixedprice),
-          isActive: !['inactive', 'false', 'no'].includes(String(row.status || '').toLowerCase()),
-          items: [],
-          notes: row.notes || '',
-        };
-        if (product || row.itemname) {
-          current.items.push({
-            product: product?._id,
-            productName: product?.name || row.itemname,
-            pricingType: row.pricingtype || current.pricingType,
-            markupPercent: toNumber(row.markuppercent || row.markup || current.markupPercent),
-            markdownPercent: toNumber(row.markdownpercent || row.markdown || current.markdownPercent),
-            sellingPrice: toNumber(row.sellingprice || row.price || row.fixedamount || product?.sellingPrice),
-            discount: toNumber(row.discount),
-          });
-        }
-        grouped.set(key, current);
-      });
-      const payload = [...grouped.values()];
-      if (!payload.length) return alert('No valid price list rows found');
-      const { data } = await api.post('/inventory/price-lists/import', { rows: payload });
-      alert(`${data.imported || 0} price lists imported`);
-      load();
-    } catch (e) {
-      alert(e.response?.data?.message || 'Import failed');
-    } finally {
-      event.target.value = '';
-    }
-  };
-
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-5">
-        <div>
-          <h1 className="text-base font-semibold text-[#333]">Price List</h1>
-          <p className="text-xs text-[#757575] mt-0.5">Set markup, markdown, or fixed pricing for customers and channels</p>
+  if (createMode) {
+    return (
+      <div className="so-module-page bg-white">
+        <div className="so-titlebar">
+          <h1 className="so-title">Create Price List</h1>
+          <div className="so-actions">
+            <button type="button" onClick={save} className="so-btn-primary text-lg min-w-[82px]">Save</button>
+            <button type="button" onClick={() => setCreateMode(false)} className="min-h-9 px-5 rounded-[3px] bg-[#66717d] text-white text-lg font-semibold">Cancel</button>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <button onClick={() => importRef.current?.click()} className="so-btn-secondary flex items-center gap-1.5 text-xs"><Upload size={13} /> Import</button>
-          <button onClick={() => exportToExcel(lists, 'price_lists', EXPORT_COLS)} className="so-btn-secondary flex items-center gap-1.5 text-xs"><Download size={13} /> Export</button>
-          <button onClick={openAdd} className="so-btn-primary flex items-center gap-1.5"><Plus size={15} /> New Price List</button>
-          <input ref={importRef} type="file" accept=".csv,text/csv" className="hidden" onChange={handleImport} />
+
+        <div className="grid grid-cols-[39%_61%] min-h-[calc(100vh-134px)] bg-white">
+          <div className="px-12 pt-16">
+            <div className="grid grid-cols-[110px_1fr] gap-x-3 gap-y-9 items-start max-w-[548px]">
+              <label className="text-lg text-right pt-2"><span className="text-red-500">*</span> Name:</label>
+              <input className="so-input w-full" value={form.name} onChange={(e) => f('name', e.target.value)} />
+
+              <label className="text-lg text-right pt-2">Description:</label>
+              <textarea className="so-input w-full min-h-[68px]" value={form.notes || ''} onChange={(e) => f('notes', e.target.value)} />
+
+              <label className="text-lg text-right pt-2"><span className="text-red-500">*</span> Type:</label>
+              <select className="so-input so-select w-[196px]" value={form.pricingType} onChange={(e) => f('pricingType', e.target.value)}>
+                {PRICING_TYPES.map((type) => <option key={type.value} value={type.value}>{type.label}</option>)}
+              </select>
+            </div>
+
+            <div className="mt-14 border-t border-[#e2e6ef] max-w-[548px] pt-8">
+              <button
+                type="button"
+                onClick={() => setImportEnabled((value) => !value)}
+                className="h-[68px] w-full max-w-[506px] bg-[#f0f3fb] rounded-[4px] flex items-center px-7 gap-4 text-xl"
+              >
+                <span className={`so-switch ${importEnabled ? 'so-switch-on' : ''}`} />
+                Import price list
+              </button>
+            </div>
+          </div>
+
+          <div className="border-l border-[#e1e5ee] pt-11 pr-4">
+            <div className="grid grid-cols-2 text-lg text-[#586174] mb-8 px-0">
+              <span>Brand</span>
+              <span>Category</span>
+            </div>
+            <div className="border border-[#d7dce5] min-h-[420px]">
+              <table className="so-table">
+                <thead>
+                  <tr>
+                    <th>Items</th>
+                    <th>Sell Price</th>
+                    <th>Custom Price</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {form.items.length === 0 && (
+                    <tr>
+                      <td colSpan={3} className="text-center py-20 text-[#b5bac4]">No Data</td>
+                    </tr>
+                  )}
+                  {form.items.map((item, index) => (
+                    <tr key={index}>
+                      <td>{item.productName || products.find((p) => p._id === item.product)?.name || '-'}</td>
+                      <td>{item.sellingPrice || '-'}</td>
+                      <td><input className="so-input w-full" value={item.sellingPrice || ''} onChange={(e) => updateItem(index, 'sellingPrice', e.target.value)} /></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
       </div>
+    );
+  }
 
-      <div className="so-table-wrap">
+  return (
+    <div className="so-module-page">
+      <div className="so-titlebar">
+        <h1 className="so-title">Price Lists</h1>
+        <button type="button" onClick={openAdd} className="so-btn-primary text-lg"><Plus size={18} /> New</button>
+      </div>
+
+      <div className="so-table-panel !mt-3 min-h-[556px]">
         <table className="so-table">
-          <thead><tr><th>Name</th><th>Code</th><th>Applicable To</th><th>Method</th><th>Items</th><th>Valid From</th><th>Valid To</th><th>Status</th><th className="w-12"></th></tr></thead>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Description</th>
+              <th>Type</th>
+              <th className="w-[80px]"></th>
+            </tr>
+          </thead>
           <tbody>
-            {loading && <tr><td colSpan={9} className="text-center py-10 text-[#9e9e9e]">Loading...</td></tr>}
-            {!loading && lists.length === 0 && <tr><td colSpan={9} className="text-center py-10 text-[#9e9e9e]">No price lists created yet</td></tr>}
-            {lists.map(l => (
-              <tr key={l._id}>
-                <td className="font-medium text-[#333]">{l.name}</td>
-                <td><span className="font-mono text-xs">{l.code || '-'}</span></td>
-                <td className="capitalize">{l.applicableTo?.replace('_', ' ')}</td>
-                <td className="capitalize">{l.pricingType || 'fixed'}</td>
-                <td>{l.items?.length || 0} items</td>
-                <td>{l.validFrom ? new Date(l.validFrom).toLocaleDateString('en-IN') : '-'}</td>
-                <td>{l.validTo ? new Date(l.validTo).toLocaleDateString('en-IN') : '-'}</td>
-                <td><span className={`so-badge ${l.isActive !== false ? 'so-badge-success' : 'so-badge-danger'}`}>{l.isActive !== false ? 'Active' : 'Inactive'}</span></td>
-                <td><button onClick={() => openEdit(l)} className="so-icon-btn"><Edit2 size={13} /></button></td>
+            {loading && <tr><td colSpan={4} className="text-center py-20 text-[#98a2b3]">Loading...</td></tr>}
+            {!loading && lists.length === 0 && (
+              <tr>
+                <td colSpan={4}>
+                  <div className="so-empty so-empty-small">
+                    <Archive className="so-box-empty-icon" strokeWidth={1.2} />
+                    <span>No Data</span>
+                  </div>
+                </td>
+              </tr>
+            )}
+            {lists.map((list) => (
+              <tr key={list._id}>
+                <td>{list.name}</td>
+                <td>{list.notes || '-'}</td>
+                <td className="capitalize">{list.pricingType || 'fixed'}</td>
+                <td><button type="button" onClick={() => openEdit(list)} className="so-icon-btn"><Edit2 size={15} /></button></td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-
-      <SlidePanel open={panelOpen} onClose={() => setPanelOpen(false)} title={editing ? 'Edit Price List' : 'New Price List'} width="w-[720px]">
-        <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
-            <div><label className="so-label">Name *</label><input className="so-input w-full" value={form.name} onChange={e => f('name', e.target.value)} placeholder="Distributor Price" /></div>
-            <div><label className="so-label">Code</label><input className="so-input w-full" value={form.code || ''} onChange={e => f('code', e.target.value)} placeholder="PL-001" /></div>
-            <div><label className="so-label">Applicable To</label>
-              <select className="so-input w-full" value={form.applicableTo} onChange={e => f('applicableTo', e.target.value)}>
-                <option value="all">All</option>
-                <option value="customers">Customers</option>
-                <option value="distributors">Distributors</option>
-                <option value="super_stockers">Super Stockers</option>
-              </select>
-            </div>
-            <div><label className="so-label">Pricing Method</label>
-              <select className="so-input w-full" value={form.pricingType} onChange={e => f('pricingType', e.target.value)}>
-                {PRICING_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-              </select>
-            </div>
-            <div><label className="so-label">Markup %</label><input type="number" className="so-input w-full" value={form.markupPercent} onChange={e => f('markupPercent', e.target.value)} min="0" /></div>
-            <div><label className="so-label">Markdown %</label><input type="number" className="so-input w-full" value={form.markdownPercent} onChange={e => f('markdownPercent', e.target.value)} min="0" /></div>
-            <div><label className="so-label">Fixed Amount</label><input type="number" className="so-input w-full" value={form.fixedAmount} onChange={e => f('fixedAmount', e.target.value)} min="0" /></div>
-            <div><label className="so-label">Status</label>
-              <select className="so-input w-full" value={form.isActive !== false ? 'active' : 'inactive'} onChange={e => f('isActive', e.target.value === 'active')}>
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-              </select>
-            </div>
-            <div><label className="so-label">Valid From</label><input type="date" className="so-input w-full" value={form.validFrom?.slice(0,10) || ''} onChange={e => f('validFrom', e.target.value)} /></div>
-            <div><label className="so-label">Valid To</label><input type="date" className="so-input w-full" value={form.validTo?.slice(0,10) || ''} onChange={e => f('validTo', e.target.value)} /></div>
-          </div>
-
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <p className="so-label mb-0">Products & Prices</p>
-              <button onClick={addItem} className="so-btn-secondary text-xs py-1 px-2 flex items-center gap-1"><Plus size={11} /> Add Product</button>
-            </div>
-            <div className="space-y-2 max-h-72 overflow-y-auto">
-              {form.items.length === 0 && <p className="text-xs text-[#9e9e9e] text-center py-4">No products added yet</p>}
-              {form.items.map((it, i) => (
-                <div key={i} className="grid grid-cols-[1fr_110px_90px_90px_100px_70px_32px] gap-2 items-center">
-                  <select className="so-input text-xs" value={it.product} onChange={e => applyProduct(i, e.target.value)}>
-                    <option value="">Select Product</option>
-                    {products.map(p => <option key={p._id} value={p._id}>{p.name}</option>)}
-                  </select>
-                  <select className="so-input text-xs" value={it.pricingType || form.pricingType} onChange={e => recalcItem(i, { pricingType: e.target.value })}>
-                    {PRICING_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-                  </select>
-                  <input type="number" className="so-input text-xs" placeholder="Markup" value={it.markupPercent || 0} onChange={e => recalcItem(i, { markupPercent: e.target.value })} />
-                  <input type="number" className="so-input text-xs" placeholder="Markdown" value={it.markdownPercent || 0} onChange={e => recalcItem(i, { markdownPercent: e.target.value })} />
-                  <input type="number" className="so-input text-xs" placeholder="Price" value={it.sellingPrice} onChange={e => updateItem(i, 'sellingPrice', e.target.value)} />
-                  <input type="number" className="so-input text-xs" placeholder="Disc%" value={it.discount} onChange={e => updateItem(i, 'discount', e.target.value)} />
-                  <button onClick={() => removeItem(i)} className="so-icon-btn text-red-400 flex-shrink-0"><X size={13} /></button>
-                </div>
-              ))}
-            </div>
-          </div>
-          <div><label className="so-label">Notes</label><textarea className="so-input w-full" rows={2} value={form.notes || ''} onChange={e => f('notes', e.target.value)} /></div>
-          <div className="flex gap-2 pt-3 border-t border-[#f0f0f0]">
-            <button onClick={save} className="so-btn-primary flex-1">Save Price List</button>
-            <button onClick={() => setPanelOpen(false)} className="so-btn-secondary flex-1">Cancel</button>
-          </div>
-        </div>
-      </SlidePanel>
     </div>
   );
 }

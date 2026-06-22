@@ -5,7 +5,7 @@ import { X } from 'lucide-react';
  * Right-side slide panel (drawer) — popups ke liye
  * Usage: <SlidePanel open={bool} onClose={fn} title="Add Item" width="w-[480px]">
  */
-export default function SlidePanel({ open, onClose, title, children, width = 'w-[520px]' }) {
+export default function SlidePanel({ open, onClose, title, children, width = 'w-[520px]', headerActions, hideClose = false, bodyClassName = 'p-5' }) {
   // ESC key se close
   useEffect(() => {
     const handler = (e) => { if (e.key === 'Escape') onClose(); };
@@ -27,17 +27,22 @@ export default function SlidePanel({ open, onClose, title, children, width = 'w-
           ${open ? 'translate-x-0' : 'translate-x-full'}`}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-[#e0e0e0]">
-          <h2 className="text-base font-semibold text-[#333]">{title}</h2>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded hover:bg-[#f5f5f5] text-[#616161] transition-colors"
-          >
-            <X size={18} />
-          </button>
+        <div className="flex items-center justify-between px-8 py-5 border-b border-[#d7dce5] min-h-[74px]">
+          <h2 className="text-2xl font-semibold text-[#101828]">{title}</h2>
+          <div className="flex items-center gap-4">
+            {headerActions}
+            {!hideClose && (
+              <button
+                onClick={onClose}
+                className="p-1.5 rounded hover:bg-[#f5f5f5] text-[#616161] transition-colors"
+              >
+                <X size={18} />
+              </button>
+            )}
+          </div>
         </div>
         {/* Body */}
-        <div className="flex-1 overflow-y-auto p-5">
+        <div className={`flex-1 overflow-y-auto ${bodyClassName}`}>
           {children}
         </div>
       </div>

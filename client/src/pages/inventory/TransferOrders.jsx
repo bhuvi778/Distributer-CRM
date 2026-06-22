@@ -1,112 +1,238 @@
 import { useState, useEffect } from 'react';
-import { Plus, X } from 'lucide-react';
+import { Archive } from 'lucide-react';
 import api from '../../api/axios';
-import SlidePanel from '../../components/common/SlidePanel';
 
-const STATUS_COLOR = { draft: 'so-badge-info', in_transit: 'so-badge-warning', completed: 'so-badge-success', cancelled: 'so-badge-danger' };
+const STATUS_COLOR = {
+  draft: 'so-badge-info',
+  in_transit: 'so-badge-warning',
+  completed: 'so-badge-success',
+  cancelled: 'so-badge-danger',
+};
+
+const todayInput = () => new Date().toISOString().slice(0, 10);
+const formatDate = (date) => new Date(date).toLocaleDateString('en-GB');
+
+const emptyForm = () => ({
+  transferNumber: '#',
+  transferDate: todayInput(),
+  fromWarehouse: '',
+  toWarehouse: '',
+  notes: '',
+  items: [],
+});
 
 export default function TransferOrders() {
   const [transfers, setTransfers] = useState([]);
   const [products, setProducts] = useState([]);
+  const [warehouses, setWarehouses] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [panelOpen, setPanelOpen] = useState(false);
-  const emptyForm = { fromWarehouse: '', toWarehouse: '', items: [], notes: '' };
-  const [form, setForm] = useState(emptyForm);
+  const [createMode, setCreateMode] = useState(false);
+  const [form, setForm] = useState(emptyForm());
+  const [productQuery, setProductQuery] = useState('');
 
   const load = async () => {
     setLoading(true);
     try {
-      const [t, p] = await Promise.all([api.get('/inventory/transfers'), api.get('/inventory/items')]);
-      setTransfers(t.data); setProducts(p.data);
-    } finally { setLoading(false); }
+      const [transferRes, productRes, warehouseRes] = await Promise.all([
+        api.get('/inventory/transfers'),
+        api.get('/inventory/items'),
+        api.get('/inventory/warehouses').catch(() => ({ data: [] })),
+      ]);
+      setTransfers(transferRes.data || []);
+      setProducts(productRes.data || []);
+      setWarehouses(warehouseRes.data || []);
+    } finally {
+      setLoading(false);
+    }
   };
+
   useEffect(() => { load(); }, []);
+
+  const f = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
+
+  const addProductByName = (value) => {
+    setProductQuery(value);
+    const product = products.find((item) => item.name.toLowerCase() === value.toLowerCase());
+    if (!product) return;
+    setForm((prev) => {
+      if (prev.items.some((item) => item.product === product._id)) return prev;
+      return {
+        ...prev,
+        items: [...prev.items, { product: product._id, productName: product.name, quantity: 1, unit: product.unit }],
+      };
+    });
+    setProductQuery('');
+  };
 
   const save = async () => {
     if (!form.fromWarehouse || !form.toWarehouse) return alert('Both warehouses required');
     if (!form.items.length) return alert('Add at least one item');
     try {
-      await api.post('/inventory/transfers', form);
-      setPanelOpen(false); setForm(emptyForm); load();
-    } catch (e) { alert(e.response?.data?.message || 'Error'); }
+      const payload = { ...form };
+      delete payload.transferNumber;
+      await api.post('/inventory/transfers', payload);
+      setCreateMode(false);
+      setForm(emptyForm());
+      load();
+    } catch (e) {
+      alert(e.response?.data?.message || 'Error');
+    }
   };
 
   const updateStatus = async (id, status) => {
-    await api.put(`/inventory/transfers/${id}`, { status }); load();
+    await api.put(`/inventory/transfers/${id}`, { status });
+    load();
   };
 
-  const f = (k, v) => setForm(p => ({ ...p, [k]: v }));
-  const addItem = () => setForm(p => ({ ...p, items: [...p.items, { product: '', productName: '', quantity: 1 }] }));
-  const updateItem = (i, k, v) => setForm(p => ({ ...p, items: p.items.map((it, idx) => idx === i ? { ...it, [k]: v } : it) }));
+  const openCreate = () => {
+    setForm(emptyForm());
+    setProductQuery('');
+    setCreateMode(true);
+  };
+
+  if (createMode) {
+    return (
+      <div className="so-module-page">
+        <div className="so-titlebar">
+          <h1 className="so-title">Create Transfer Order</h1>
+          <div className="so-actions">
+            <button type="button" onClick={() => setCreateMode(false)} className="so-btn-secondary border-[#174bb8] text-[#174bb8] min-w-[50px] text-lg">X</button>
+            <button type="button" onClick={save} className="so-btn-primary text-lg min-w-[80px]">Save</button>
+          </div>
+        </div>
+
+        <div className="p-4 space-y-5">
+          <section className="bg-white border border-[#d7dce5] rounded-lg px-8 py-8">
+            <h2 className="text-sm uppercase tracking-wide font-semibold text-[#667085] mb-8">Transfer Order Details</h2>
+            <div className="grid grid-cols-2 gap-x-5 gap-y-5">
+              <div>
+                <label className="so-label !text-base !text-[#667085]">Transfer Number</label>
+                <input className="so-input w-full" value={form.transferNumber} onChange={(e) => f('transferNumber', e.target.value)} />
+              </div>
+              <div>
+                <label className="so-label !text-base !text-[#667085]">Transfer Date</label>
+                <input type="date" className="so-input w-full bg-[#f4f4f4] text-[#b3b3b3]" value={form.transferDate} onChange={(e) => f('transferDate', e.target.value)} />
+              </div>
+              <div>
+                <label className="so-label !text-base !text-[#667085]">From Warehouse</label>
+                <select className="so-input so-select w-full" value={form.fromWarehouse} onChange={(e) => f('fromWarehouse', e.target.value)}>
+                  <option value="">Select Warehouse</option>
+                  {warehouses.map((warehouse) => <option key={warehouse._id} value={warehouse.name}>{warehouse.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="so-label !text-base !text-[#667085]">To Warehouse</label>
+                <select className="so-input so-select w-full" value={form.toWarehouse} onChange={(e) => f('toWarehouse', e.target.value)}>
+                  <option value="">Select Warehouse</option>
+                  {warehouses.map((warehouse) => <option key={warehouse._id} value={warehouse.name}>{warehouse.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="so-label !text-base !text-[#667085]">Comments</label>
+                <textarea className="so-input w-full min-h-[40px]" value={form.notes} onChange={(e) => f('notes', e.target.value)} placeholder="Additional notes or remarks..." />
+              </div>
+            </div>
+          </section>
+
+          <section className="bg-white border border-[#d7dce5] rounded-lg px-8 py-8">
+            <h2 className="text-sm uppercase tracking-wide font-semibold text-[#667085] mb-6">Items</h2>
+            <input
+              className="so-input w-full bg-[#e8edf4]"
+              value={productQuery}
+              onChange={(e) => addProductByName(e.target.value)}
+              list="transfer-products"
+              placeholder="Enter product name"
+            />
+            <datalist id="transfer-products">
+              {products.map((product) => <option key={product._id} value={product.name} />)}
+            </datalist>
+            {form.items.length > 0 && (
+              <div className="mt-4 border border-[#d7dce5]">
+                <table className="so-table">
+                  <thead><tr><th>Items</th><th className="w-[170px]">Quantity</th></tr></thead>
+                  <tbody>
+                    {form.items.map((item, index) => (
+                      <tr key={item.product}>
+                        <td>{item.productName}</td>
+                        <td>
+                          <input
+                            type="number"
+                            min="1"
+                            className="so-input w-full"
+                            value={item.quantity}
+                            onChange={(e) => setForm((prev) => ({
+                              ...prev,
+                              items: prev.items.map((row, idx) => (idx === index ? { ...row, quantity: Number(e.target.value) } : row)),
+                            }))}
+                          />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+        </div>
+      </div>
+    );
+  }
+
+  const range = `${formatDate(new Date())} - ${formatDate(new Date())}`;
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-5">
-        <div>
-          <h1 className="text-base font-semibold text-[#333]">Transfer Orders</h1>
-          <p className="text-xs text-[#757575] mt-0.5">Move stock between warehouses</p>
-        </div>
-        <button onClick={() => { setForm(emptyForm); setPanelOpen(true); }} className="so-btn-primary flex items-center gap-1.5"><Plus size={15} /> New Transfer</button>
+    <div className="so-module-page">
+      <div className="so-titlebar">
+        <h1 className="so-title">Transfer Orders</h1>
+        <button type="button" onClick={openCreate} className="so-btn-primary text-lg">Create Transfer Order</button>
       </div>
 
-      <div className="so-table-wrap">
+      <div className="so-filterbar">
+        <input className="so-input w-[378px]" readOnly value={range} />
+      </div>
+
+      <div className="so-table-panel">
         <table className="so-table">
-          <thead><tr><th>Transfer #</th><th>From Warehouse</th><th>To Warehouse</th><th>Items</th><th>Status</th><th>Date</th><th>Action</th></tr></thead>
+          <thead>
+            <tr>
+              <th>Transfer No.</th>
+              <th>Date</th>
+              <th>From</th>
+              <th>To</th>
+              <th>Comment</th>
+              <th>Status</th>
+              <th className="w-[150px]"></th>
+            </tr>
+          </thead>
           <tbody>
-            {loading && <tr><td colSpan={7} className="text-center py-10 text-[#9e9e9e]">Loading…</td></tr>}
-            {!loading && transfers.length === 0 && <tr><td colSpan={7} className="text-center py-10 text-[#9e9e9e]">No transfer orders yet</td></tr>}
-            {transfers.map(t => (
-              <tr key={t._id}>
-                <td><span className="font-mono text-xs font-medium">{t.transferNumber}</span></td>
-                <td>{t.fromWarehouse}</td>
-                <td>{t.toWarehouse}</td>
-                <td>{t.items?.length} items</td>
-                <td><span className={`so-badge ${STATUS_COLOR[t.status] || ''}`}>{t.status?.replace('_', ' ')}</span></td>
-                <td>{new Date(t.transferDate).toLocaleDateString('en-IN')}</td>
+            {loading && <tr><td colSpan={7} className="text-center py-20 text-[#98a2b3]">Loading...</td></tr>}
+            {!loading && transfers.length === 0 && (
+              <tr>
+                <td colSpan={7}>
+                  <div className="so-empty so-empty-small">
+                    <Archive className="so-box-empty-icon" strokeWidth={1.2} />
+                    <span>No Data</span>
+                  </div>
+                </td>
+              </tr>
+            )}
+            {transfers.map((transfer) => (
+              <tr key={transfer._id}>
+                <td>{transfer.transferNumber}</td>
+                <td>{formatDate(transfer.transferDate)}</td>
+                <td>{transfer.fromWarehouse}</td>
+                <td>{transfer.toWarehouse}</td>
+                <td>{transfer.notes || '-'}</td>
+                <td><span className={`so-badge ${STATUS_COLOR[transfer.status] || ''}`}>{transfer.status?.replace('_', ' ')}</span></td>
                 <td>
-                  {t.status === 'draft' && <button onClick={() => updateStatus(t._id, 'in_transit')} className="so-btn-secondary text-xs py-1 px-2">Dispatch</button>}
-                  {t.status === 'in_transit' && <button onClick={() => updateStatus(t._id, 'completed')} className="so-btn-primary text-xs py-1 px-2">Mark Received</button>}
+                  {transfer.status === 'draft' && <button type="button" onClick={() => updateStatus(transfer._id, 'in_transit')} className="so-btn-secondary text-sm">Dispatch</button>}
+                  {transfer.status === 'in_transit' && <button type="button" onClick={() => updateStatus(transfer._id, 'completed')} className="so-btn-primary text-sm">Mark Received</button>}
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-
-      <SlidePanel open={panelOpen} onClose={() => setPanelOpen(false)} title="New Transfer Order">
-        <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
-            <div><label className="so-label">From Warehouse *</label><input className="so-input w-full" value={form.fromWarehouse} onChange={e => f('fromWarehouse', e.target.value)} placeholder="e.g. Main Warehouse" /></div>
-            <div><label className="so-label">To Warehouse *</label><input className="so-input w-full" value={form.toWarehouse} onChange={e => f('toWarehouse', e.target.value)} placeholder="e.g. Branch Warehouse" /></div>
-          </div>
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <p className="so-label mb-0">Items to Transfer</p>
-              <button onClick={addItem} className="so-btn-secondary text-xs py-1 px-2 flex items-center gap-1"><Plus size={11} /> Add Item</button>
-            </div>
-            {form.items.length === 0 && <p className="text-xs text-[#9e9e9e] text-center py-3">No items added</p>}
-            {form.items.map((it, i) => (
-              <div key={i} className="flex gap-2 mb-2 items-center">
-                <select className="so-input flex-1 text-xs" value={it.product} onChange={e => {
-                  const prod = products.find(p => p._id === e.target.value);
-                  updateItem(i, 'product', e.target.value);
-                  updateItem(i, 'productName', prod?.name || '');
-                }}>
-                  <option value="">Select Item</option>
-                  {products.map(p => <option key={p._id} value={p._id}>{p.name}</option>)}
-                </select>
-                <input type="number" className="so-input w-20 text-xs" placeholder="Qty" min="1" value={it.quantity} onChange={e => updateItem(i, 'quantity', Number(e.target.value))} />
-                <button onClick={() => setForm(p => ({ ...p, items: p.items.filter((_, idx) => idx !== i) }))} className="so-icon-btn text-red-400 flex-shrink-0"><X size={13} /></button>
-              </div>
-            ))}
-          </div>
-          <div><label className="so-label">Notes</label><textarea className="so-input w-full" rows={2} value={form.notes} onChange={e => f('notes', e.target.value)} /></div>
-          <div className="flex gap-2 pt-3 border-t border-[#f0f0f0]">
-            <button onClick={save} className="so-btn-primary flex-1">Create Transfer</button>
-            <button onClick={() => setPanelOpen(false)} className="so-btn-secondary flex-1">Cancel</button>
-          </div>
-        </div>
-      </SlidePanel>
     </div>
   );
 }

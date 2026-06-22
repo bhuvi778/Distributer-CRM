@@ -92,10 +92,10 @@ function AppRoutes() {
         {/* ── INVENTORY ── */}
         <Route path="inventory">
           <Route index element={<Navigate to="items" replace />} />
-          <Route path="items"      element={<RoleRoute path="/app/inventory/items"><P><Items /></P></RoleRoute>} />
-          <Route path="warehouses" element={<RoleRoute path="/app/inventory/warehouses"><P><Warehouses /></P></RoleRoute>} />
-          <Route path="price-list" element={<RoleRoute path="/app/inventory/price-list"><P><PriceList /></P></RoleRoute>} />
-          <Route path="transfers"  element={<RoleRoute path="/app/inventory/transfers"><P><TransferOrders /></P></RoleRoute>} />
+          <Route path="items"      element={<RoleRoute path="/app/inventory/items"><Items /></RoleRoute>} />
+          <Route path="warehouses" element={<RoleRoute path="/app/inventory/warehouses"><Warehouses /></RoleRoute>} />
+          <Route path="price-list" element={<RoleRoute path="/app/inventory/price-list"><PriceList /></RoleRoute>} />
+          <Route path="transfers"  element={<RoleRoute path="/app/inventory/transfers"><TransferOrders /></RoleRoute>} />
         </Route>
 
         {/* Leads */}
