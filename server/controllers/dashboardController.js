@@ -83,7 +83,7 @@ export const getDashboardStats = async (req, res) => {
       extra.pendingApprovalCount = await Payment.countDocuments({ status: 'pending' });
       extra.totalInvoices = await Invoice.countDocuments({ type: 'sales' });
     }
-    if (role === 'sales_rep') {
+    if (['sales_executive', 'sales_rep'].includes(role)) {
       const target = await Target.findOne({ isActive: true, 'assignments.user': user._id }).sort('-createdAt');
       const assignment = target?.assignments?.find((a) => String(a.user) === String(user._id));
       extra.myTargetPct = assignment?.percentage || 0;
@@ -119,7 +119,7 @@ export const getDashboardStats = async (req, res) => {
       Outlet.countDocuments(activeOutletMatch),
       Product.countDocuments({ isActive: true }),
       Payment.aggregate([{ $match: pendingPaymentMatch }, { $group: { _id: null, total: { $sum: '$amount' } } }]),
-      ['super_admin', 'admin', 'manager'].includes(role) ? User.countDocuments({ role: 'sales_rep', isActive: true }) : Promise.resolve(0),
+      ['super_admin', 'admin', 'manager'].includes(role) ? User.countDocuments({ role: { $in: ['sales_executive', 'sales_rep'] }, isActive: true }) : Promise.resolve(0),
       SalesOrder.find(baseOrder).populate('outlet', 'name').populate('salesRep', 'name').sort('-createdAt').limit(5),
       SalesOrder.aggregate([
         { $match: baseOrder },
@@ -183,14 +183,14 @@ export const getSalesChart = async (req, res) => {
 
 export const getLeaderboard = async (req, res) => {
   try {
-    if (!['admin', 'manager', 'sales_rep'].includes(req.user.role)) {
+    if (!['admin', 'manager', 'sales_executive', 'sales_rep'].includes(req.user.role)) {
       return res.json([]);
     }
 
     const targets = await Target.findOne({ isActive: true }).sort('-createdAt');
     if (targets) {
       let assignments = [...targets.assignments].sort((a, b) => b.percentage - a.percentage);
-      if (req.user.role === 'sales_rep') {
+      if (['sales_executive', 'sales_rep'].includes(req.user.role)) {
         assignments = assignments.filter((a) => String(a.user) === String(req.user._id));
       }
       const populated = await User.populate(assignments, { path: 'user', select: 'name email avatar role' });
@@ -202,7 +202,7 @@ export const getLeaderboard = async (req, res) => {
       { $match: { status: { $ne: 'cancelled' }, ...orderFilter } },
       { $group: { _id: '$salesRep', totalSales: { $sum: '$grandTotal' }, orderCount: { $sum: 1 } } },
       { $sort: { totalSales: -1 } },
-      { $limit: req.user.role === 'sales_rep' ? 1 : 10 },
+      { $limit: ['sales_executive', 'sales_rep'].includes(req.user.role) ? 1 : 10 },
     ]);
     const populated = await User.populate(leaderboard, { path: '_id', select: 'name email avatar role' });
     res.json(populated);
