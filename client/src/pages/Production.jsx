@@ -1,5 +1,6 @@
 import DataPage from '../components/common/DataPage';
 import { useLocation } from 'react-router-dom';
+import SalesTransactionPage from './sales/SalesTransactionPage';
 
 const MODES = {
   grm: {
@@ -28,6 +29,20 @@ export default function Production() {
   const { pathname } = useLocation();
   const key = pathname.split('/').filter(Boolean).pop();
   const mode = MODES[key] || MODES['production-orders'];
+
+  if (key === 'production-orders') {
+    return (
+      <SalesTransactionPage
+        type="production"
+        title="Production"
+        createLabel="Create production"
+        endpoint="/production"
+        endpointParams={{ productionType: 'production_order' }}
+        createEnabled={false}
+        emptyText="Sorry! No production found."
+      />
+    );
+  }
 
   return (
     <DataPage

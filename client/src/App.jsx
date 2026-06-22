@@ -42,6 +42,7 @@ import Estimates from './pages/sales/Estimates';
 import SalesInvoices from './pages/sales/SalesInvoices';
 import DeliveryChallans from './pages/sales/DeliveryChallans';
 import SalesReturns from './pages/sales/SalesReturns';
+import CreditNote from './pages/sales/CreditNote';
 
 // ── Routes ───────────────────────────────────────────────────────
 import Regions from './pages/routes/Regions';
@@ -121,6 +122,7 @@ function AppRoutes() {
           <Route path="invoices"          element={<RoleRoute path="/app/sales/invoices"><P><SalesInvoices /></P></RoleRoute>} />
           <Route path="delivery-challans" element={<RoleRoute path="/app/sales/delivery-challans"><P><DeliveryChallans /></P></RoleRoute>} />
           <Route path="returns"           element={<RoleRoute path="/app/sales/returns"><P><SalesReturns /></P></RoleRoute>} />
+          <Route path="credit-note"       element={<RoleRoute path="/app/sales/credit-note"><P><CreditNote /></P></RoleRoute>} />
         </Route>
 
         {/* ── PURCHASES ── */}

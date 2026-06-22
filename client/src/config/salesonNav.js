@@ -59,7 +59,7 @@ export const SALESON_NAV_DEF = [
   {
     type: 'group',
     id: 'sales',
-    label: 'Transactions',
+    label: 'Sales',
     icon: ShoppingCart,
     items: [
       { path: '/app/sales/estimates',         moduleId: 'sales-estimates', label: 'Estimates' },
@@ -69,6 +69,7 @@ export const SALESON_NAV_DEF = [
       { path: '/app/sales/invoices',          moduleId: 'sales-invoices',  label: 'Sales Invoices' },
       { path: '/app/sales/delivery-challans', moduleId: 'sales-delivery',  label: 'Delivery Challans' },
       { path: '/app/sales/returns',           moduleId: 'sales-returns',   label: 'Sales Returns' },
+      { path: '/app/sales/credit-note',       moduleId: 'sales-credit-note', label: 'Credit Note' },
     ],
   },
   {

@@ -1,0 +1,526 @@
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  ChevronDown, ChevronLeft, ChevronRight, Download, Filter, Plus, Search, Settings, X,
+} from 'lucide-react';
+import api from '../../api/axios';
+import SlidePanel from '../../components/common/SlidePanel';
+import useMasterData from '../../hooks/useMasterData';
+import { exportToExcel } from '../../utils/exportExcel';
+import { formatCurrency } from '../../utils/helpers';
+
+const PAGE_SIZE = 30;
+
+const SETTINGS_DEFAULTS = {
+  vehicleNo: false,
+  ewayBillNo: false,
+  creditPeriod: false,
+  roundOff: false,
+  termsAndConditions: false,
+  minOrderValue: '',
+  discountName: '',
+  discountType: 'Percent',
+  chargesName: '',
+  customFields: [],
+};
+
+const ESTIMATE_SETTINGS_DEFAULTS = {
+  ...SETTINGS_DEFAULTS,
+  poNumber: '',
+};
+
+const statusOptions = ['draft', 'sent', 'accepted', 'pending', 'approved', 'delivered', 'cancelled'];
+
+const getValue = (obj, keys, fallback = '-') => {
+  for (const key of keys) {
+    const value = key.split('.').reduce((acc, part) => acc?.[part], obj);
+    if (value !== undefined && value !== null && value !== '') return value;
+  }
+  return fallback;
+};
+
+const getTransactionNumber = (row) => getValue(row, [
+  'estimateNumber', 'orderNumber', 'invoiceNumber', 'challanNumber', 'returnNumber', 'creditNoteNumber', 'referenceNumber',
+], '-');
+
+const getParty = (row) => getValue(row, ['partyName', 'outlet.name', 'party.name', 'customerName'], '-');
+const getUser = (row) => getValue(row, ['createdBy.name', 'salesRep.name', 'deliveryAgent.name', 'processedBy.name'], '-');
+const getAmount = (row) => Number(getValue(row, ['grandTotal', 'amount', 'subtotal'], 0)) || 0;
+const getDate = (row) => getValue(row, ['invoiceDate', 'orderDate', 'returnDate', 'createdAt'], null);
+
+function TxSwitch({ checked, onChange }) {
+  return (
+    <button
+      type="button"
+      onClick={() => onChange(!checked)}
+      className={`so-settings-switch ${checked ? 'so-settings-switch-on' : ''}`}
+      aria-pressed={checked}
+    />
+  );
+}
+
+function TxSettingRow({ label, checked, onChange }) {
+  return (
+    <div className="so-settings-row">
+      <span>{label}</span>
+      <TxSwitch checked={checked} onChange={onChange} />
+    </div>
+  );
+}
+
+function TransactionSettingsModal({
+  estimateMode,
+  settings,
+  setSetting,
+  newCustomField,
+  setNewCustomField,
+  addCustomField,
+  removeCustomField,
+  onClose,
+  onSave,
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/45" onClick={onClose} />
+      <div className="relative w-[min(650px,calc(100vw-32px))] max-h-[calc(100vh-72px)] bg-white rounded-[3px] border border-[#d7dce5] shadow-2xl flex flex-col">
+        <div className="h-[70px] flex items-center justify-between px-7 border-b border-[#eceff4]">
+          <h2 className="text-xl font-semibold text-[#202733]">Transaction Settings</h2>
+          <button type="button" onClick={onClose} className="text-[#777] hover:text-[#111]">
+            <X size={22} />
+          </button>
+        </div>
+
+        <div className="px-7 py-4 overflow-y-auto">
+          <TxSettingRow label="Vehicle No." checked={!!settings.vehicleNo} onChange={(value) => setSetting('vehicleNo', value)} />
+          <TxSettingRow label="E-way Bill No" checked={!!settings.ewayBillNo} onChange={(value) => setSetting('ewayBillNo', value)} />
+          <TxSettingRow label="Credit Period" checked={!!settings.creditPeriod} onChange={(value) => setSetting('creditPeriod', value)} />
+          <TxSettingRow label="Round Off." checked={!!settings.roundOff} onChange={(value) => setSetting('roundOff', value)} />
+          <TxSettingRow label="Terms and conditions" checked={!!settings.termsAndConditions} onChange={(value) => setSetting('termsAndConditions', value)} />
+
+          <div className="border-t border-[#eceff4] mt-8 pt-7 space-y-3">
+            <div className="grid grid-cols-[180px_1fr] items-center gap-3">
+              <label className="text-[15px] text-[#2b2f36]">Min. Order Value:</label>
+              <input
+                className="so-input w-[112px]"
+                value={settings.minOrderValue || ''}
+                onChange={(event) => setSetting('minOrderValue', event.target.value)}
+                placeholder="₹"
+              />
+            </div>
+            <div className="grid grid-cols-[180px_1fr] items-center gap-3">
+              <label className="text-[15px] text-[#2b2f36]">Discounts ( - ):</label>
+              <div className="flex items-center gap-2">
+                <input
+                  className="so-input w-[202px]"
+                  value={settings.discountName || ''}
+                  onChange={(event) => setSetting('discountName', event.target.value)}
+                  placeholder="Discount"
+                />
+                <select
+                  className="so-input so-select w-[120px]"
+                  value={settings.discountType || 'Percent'}
+                  onChange={(event) => setSetting('discountType', event.target.value)}
+                >
+                  <option>Percent</option>
+                  <option>Amount</option>
+                </select>
+                <button type="button" className="so-icon-btn !rounded-full !w-10 !h-10 text-[#333]">-</button>
+              </div>
+            </div>
+            <div className="grid grid-cols-[180px_1fr] items-center gap-3">
+              <span />
+              <button type="button" onClick={addCustomField} className="h-10 w-[230px] border border-dashed border-[#d7dce5] text-[#333] text-base">
+                <Plus size={16} className="inline mr-2" /> Add Custom Field
+              </button>
+            </div>
+            <div className="grid grid-cols-[180px_1fr] items-center gap-3">
+              <label className="text-[15px] text-[#2b2f36]">Charges ( + ):</label>
+              <button type="button" onClick={addCustomField} className="h-10 w-[230px] border border-dashed border-[#d7dce5] text-[#333] text-base">
+                <Plus size={16} className="inline mr-2" /> Add Custom Field
+              </button>
+            </div>
+            {estimateMode && (
+              <div className="grid grid-cols-[180px_1fr] items-center gap-3">
+                <span />
+                <input
+                  className="so-input w-[230px]"
+                  value={settings.poNumber || ''}
+                  onChange={(event) => setSetting('poNumber', event.target.value)}
+                  placeholder="PO Number"
+                />
+              </div>
+            )}
+          </div>
+
+          <div className="py-4 border-t border-[#eceff4] mt-4">
+            {(settings.customFields || []).map((field, index) => (
+              <div key={`${field.label}-${index}`} className="flex items-center justify-center gap-2 mb-2">
+                <input
+                  className="so-input w-[230px]"
+                  value={field.label}
+                  onChange={(event) => setSetting('customFields', settings.customFields.map((item, idx) => (
+                    idx === index ? { ...item, label: event.target.value } : item
+                  )))}
+                />
+                <button type="button" onClick={() => removeCustomField(index)} className="so-icon-btn !w-10 !h-10"><X size={16} /></button>
+              </div>
+            ))}
+            <div className="flex items-center justify-center gap-2">
+              <input
+                className="so-input w-[230px]"
+                value={newCustomField}
+                onChange={(event) => setNewCustomField(event.target.value)}
+                placeholder="Custom field"
+                onKeyDown={(event) => { if (event.key === 'Enter') addCustomField(); }}
+              />
+              <button type="button" onClick={addCustomField} className="text-[#0057d8] text-sm">+ Add custom field</button>
+            </div>
+          </div>
+        </div>
+
+        <div className="h-[62px] px-5 border-t border-[#d7dce5] bg-[#fafafa] flex items-center justify-end gap-2">
+          <button type="button" onClick={onClose} className="h-[37px] min-w-[82px] rounded-[3px] border border-[#667085] bg-white text-[#667085] text-base">Cancel</button>
+          <button type="button" onClick={onSave} className="h-[37px] min-w-[66px] rounded-[3px] bg-[#174bb8] text-white text-base font-semibold">Save</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const buildExportCols = () => [
+  { key: 'number', label: 'No.', renderExport: (_, row) => getTransactionNumber(row) },
+  { key: 'date', label: 'Date', renderExport: (_, row) => getDate(row) ? new Date(getDate(row)).toLocaleDateString('en-IN') : '' },
+  { key: 'party', label: 'Party', renderExport: (_, row) => getParty(row) },
+  { key: 'user', label: 'User', renderExport: (_, row) => getUser(row) },
+  { key: 'amount', label: 'Amount', renderExport: (_, row) => getAmount(row) },
+  { key: 'status', label: 'Status', accessor: 'status' },
+];
+
+export default function SalesTransactionPage({
+  type,
+  title,
+  createLabel,
+  endpoint,
+  createEndpoint,
+  endpointParams,
+  emptyText = 'Sorry! No invoices found.',
+  settingsMode = 'standard',
+  createEnabled = true,
+}) {
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [status, setStatus] = useState('');
+  const [userFilter, setUserFilter] = useState('');
+  const [page, setPage] = useState(1);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settings, setSettings] = useState(settingsMode === 'estimate' ? ESTIMATE_SETTINGS_DEFAULTS : SETTINGS_DEFAULTS);
+  const [newCustomField, setNewCustomField] = useState('');
+  const [panelOpen, setPanelOpen] = useState(false);
+  const [form, setForm] = useState({
+    partyName: '',
+    outlet: '',
+    salesRep: '',
+    product: '',
+    quantity: 1,
+    rate: 0,
+    amount: 0,
+    vehicleNumber: '',
+    notes: '',
+  });
+  const [saving, setSaving] = useState(false);
+  const { outlets, products, users } = useMasterData();
+
+  const defaults = settingsMode === 'estimate' ? ESTIMATE_SETTINGS_DEFAULTS : SETTINGS_DEFAULTS;
+
+  const load = useCallback(async () => {
+    if (!endpoint) {
+      setRows([]);
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    try {
+      const { data } = await api.get(endpoint, { params: { ...(endpointParams || {}), search: search || undefined, status: status || undefined } });
+      setRows(Array.isArray(data) ? data : []);
+    } catch {
+      setRows([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [endpoint, endpointParams, search, status]);
+
+  const loadSettings = useCallback(async () => {
+    try {
+      const { data } = await api.get(`/sales/settings/${type}`);
+      setSettings({ ...defaults, ...(data || {}) });
+    } catch {
+      setSettings(defaults);
+    }
+  }, [type, defaults]);
+
+  useEffect(() => { load(); }, [load]);
+  useEffect(() => { loadSettings(); }, [loadSettings]);
+  useEffect(() => { setPage(1); }, [search, status, userFilter]);
+
+  const filtered = useMemo(() => rows.filter((row) => {
+    const blob = JSON.stringify(row).toLowerCase();
+    const matchesSearch = !search || blob.includes(search.toLowerCase());
+    const matchesUser = !userFilter || getUser(row) === userFilter;
+    return matchesSearch && matchesUser;
+  }), [rows, search, userFilter]);
+
+  const usersForFilter = [...new Set(rows.map((row) => getUser(row)).filter((value) => value && value !== '-'))];
+  const displayed = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const totalAmount = filtered.reduce((sum, row) => sum + getAmount(row), 0);
+  const displayRange = filtered.length ? `${((page - 1) * PAGE_SIZE) + 1} - ${Math.min(page * PAGE_SIZE, filtered.length)} of ${filtered.length}` : '1 - 0 of 0';
+
+  const setSetting = (key, value) => setSettings((prev) => ({ ...prev, [key]: value }));
+
+  const addCustomField = () => {
+    const label = newCustomField.trim() || 'Custom Field';
+    setSettings((prev) => ({
+      ...prev,
+      customFields: [...(prev.customFields || []), { label, enabled: true }],
+    }));
+    setNewCustomField('');
+  };
+
+  const removeCustomField = (index) => setSettings((prev) => ({
+    ...prev,
+    customFields: (prev.customFields || []).filter((_, idx) => idx !== index),
+  }));
+
+  const saveSettings = async () => {
+    try {
+      const { data } = await api.put(`/sales/settings/${type}`, settings);
+      setSettings({ ...defaults, ...(data || {}) });
+      setSettingsOpen(false);
+    } catch (e) {
+      alert(e.response?.data?.message || 'Error saving settings');
+    }
+  };
+
+  const openCreate = () => {
+    setForm({
+      partyName: '',
+      outlet: '',
+      salesRep: users[0]?._id || '',
+      product: '',
+      quantity: 1,
+      rate: 0,
+      amount: 0,
+      vehicleNumber: '',
+      notes: '',
+    });
+    setPanelOpen(true);
+  };
+
+  const saveCreate = async () => {
+    if (!createEndpoint || !createEnabled) {
+      setPanelOpen(false);
+      return;
+    }
+    const product = products.find((item) => item._id === form.product);
+    const amount = Number(form.amount || (Number(form.quantity || 0) * Number(form.rate || 0))) || 0;
+    const item = form.product ? [{
+      product: form.product,
+      productName: product?.name || '',
+      sku: product?.sku || '',
+      quantity: Number(form.quantity || 1),
+      rate: Number(form.rate || 0),
+      gstRate: product?.gstRate || 18,
+      amount,
+    }] : [];
+
+    const payloads = {
+      estimate: { partyName: form.partyName, outlet: form.outlet || undefined, items: item, subtotal: amount, grandTotal: amount, notes: form.notes },
+      order: { outlet: form.outlet, salesRep: form.salesRep, items: item, subtotal: amount, grandTotal: amount, notes: form.notes },
+      invoice: { type: 'sales', outlet: form.outlet || undefined, salesRep: form.salesRep || undefined, items: item, subtotal: amount, grandTotal: amount, notes: form.notes },
+      challan: { outlet: form.outlet || undefined, vehicleNumber: form.vehicleNumber, items: item.map((entry) => ({ ...entry, unit: product?.unit || '' })), notes: form.notes },
+      return: { outlet: form.outlet || undefined, items: item, subtotal: amount, grandTotal: amount, notes: form.notes },
+      credit_note: { partyName: form.partyName, outlet: form.outlet || undefined, amount, notes: form.notes },
+    };
+
+    if (type === 'order' && (!form.outlet || !form.salesRep || !form.product)) {
+      alert('Sales order ke liye Outlet, Sales Rep aur Product required hain');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      await api.post(createEndpoint, payloads[type] || payloads.credit_note);
+      setPanelOpen(false);
+      load();
+    } catch (e) {
+      alert(e.response?.data?.message || 'Error creating record');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div>
+      <div className="so-titlebar">
+        <h1 className="so-title">{title}</h1>
+        <div className="so-actions">
+          <span className="h-7 px-3 rounded-[2px] bg-[#1687d9] text-white text-sm flex items-center">Total : ₹ {totalAmount.toLocaleString('en-IN')}</span>
+          <button type="button" onClick={() => setSettingsOpen(true)} className="so-icon-btn !w-[58px] !h-9" title="Settings"><Settings size={18} /></button>
+          <button type="button" onClick={() => exportToExcel(filtered, type, buildExportCols())} className="so-btn-secondary text-sm">
+            Export As <ChevronDown size={15} />
+          </button>
+          <button type="button" onClick={openCreate} className="so-btn-primary text-sm">{createLabel}</button>
+        </div>
+      </div>
+
+      <div className="so-filterbar">
+        <div className="so-search-group">
+          <input className="so-input" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search" />
+          <button type="button" className="so-search-button" onClick={load}><Search size={18} /></button>
+        </div>
+        <input className="so-input w-[240px]" value="22/06/2026 - 22/06/2026" readOnly />
+        <select className="so-input so-select w-[240px]" value={userFilter} onChange={(event) => setUserFilter(event.target.value)}>
+          <option value="">Select User</option>
+          {usersForFilter.map((user) => <option key={user} value={user}>{user}</option>)}
+        </select>
+        <select className="so-input so-select w-[240px]" value={status} onChange={(event) => setStatus(event.target.value)}>
+          <option value="">Select Status</option>
+          {statusOptions.map((option) => <option key={option} value={option}>{option}</option>)}
+        </select>
+        <button type="button" className="so-btn-secondary border-[#174bb8] text-[#174bb8] text-sm"><Filter size={15} /> Filters</button>
+        <div className="ml-auto flex items-center gap-2 text-sm text-[#111827]">
+          <span>{displayRange}</span>
+          <button type="button" onClick={() => setPage((value) => Math.max(1, value - 1))} disabled={page === 1} className="so-icon-btn !w-10 !h-9 text-[#174bb8] disabled:opacity-40"><ChevronLeft size={14} /></button>
+          <button type="button" onClick={() => setPage((value) => Math.min(totalPages, value + 1))} disabled={page === totalPages} className="so-icon-btn !w-10 !h-9 text-[#174bb8] disabled:opacity-40"><ChevronRight size={14} /></button>
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="so-empty"><p>Loading...</p></div>
+      ) : displayed.length === 0 ? (
+        <div className="so-empty">
+          <div className="so-empty-illustration" />
+          <p>{emptyText}</p>
+        </div>
+      ) : (
+        <div className="so-table-panel">
+          <table className="so-table">
+            <thead>
+              <tr>
+                <th>No.</th>
+                <th>Date</th>
+                <th>Party</th>
+                <th>User</th>
+                <th>Status</th>
+                <th className="text-right">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              {displayed.map((row) => (
+                <tr key={row._id}>
+                  <td className="font-mono text-xs text-[#174bb8]">{getTransactionNumber(row)}</td>
+                  <td>{getDate(row) ? new Date(getDate(row)).toLocaleDateString('en-IN') : '-'}</td>
+                  <td>{getParty(row)}</td>
+                  <td>{getUser(row)}</td>
+                  <td><span className="so-badge so-badge-info capitalize">{row.status || 'draft'}</span></td>
+                  <td className="text-right font-medium">{formatCurrency(getAmount(row))}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <SlidePanel
+        open={panelOpen}
+        onClose={() => setPanelOpen(false)}
+        title={createLabel.replace(/^Create /, 'Create ')}
+        width="w-[620px]"
+        hideClose
+        bodyClassName="p-4"
+        headerActions={(
+          <>
+            <button type="button" onClick={saveCreate} disabled={saving} className="so-btn-primary text-sm min-w-[67px]">{saving ? 'Saving...' : 'Save'}</button>
+            <button type="button" onClick={() => setPanelOpen(false)} className="text-sm px-3">Cancel</button>
+          </>
+        )}
+      >
+        <div className="space-y-4">
+          <div className="so-form-section-title">General Details</div>
+          <div className="so-form-grid">
+            <div>
+              <label className="so-label">Party Name</label>
+              <input className="so-input w-full" value={form.partyName} onChange={(event) => setForm((prev) => ({ ...prev, partyName: event.target.value }))} placeholder="Name" />
+            </div>
+            <div>
+              <label className="so-label">Outlet</label>
+              <select className="so-input so-select w-full" value={form.outlet} onChange={(event) => setForm((prev) => ({ ...prev, outlet: event.target.value }))}>
+                <option value="">Select Outlet</option>
+                {outlets.map((outlet) => <option key={outlet._id} value={outlet._id}>{outlet.name}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="so-label">Sales Rep</label>
+              <select className="so-input so-select w-full" value={form.salesRep} onChange={(event) => setForm((prev) => ({ ...prev, salesRep: event.target.value }))}>
+                <option value="">Select User</option>
+                {users.map((user) => <option key={user._id} value={user._id}>{user.name}</option>)}
+              </select>
+            </div>
+            {settings.vehicleNo && (
+              <div>
+                <label className="so-label">Vehicle No.</label>
+                <input className="so-input w-full" value={form.vehicleNumber} onChange={(event) => setForm((prev) => ({ ...prev, vehicleNumber: event.target.value }))} />
+              </div>
+            )}
+            <div>
+              <label className="so-label">Item</label>
+              <select className="so-input so-select w-full" value={form.product} onChange={(event) => {
+                const product = products.find((item) => item._id === event.target.value);
+                setForm((prev) => ({ ...prev, product: event.target.value, rate: product?.sellingPrice || product?.rate || 0 }));
+              }}>
+                <option value="">Select Item</option>
+                {products.map((product) => <option key={product._id} value={product._id}>{product.name}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="so-label">Quantity</label>
+              <input type="number" className="so-input w-full" value={form.quantity} onChange={(event) => setForm((prev) => ({ ...prev, quantity: Number(event.target.value) }))} />
+            </div>
+            <div>
+              <label className="so-label">Rate</label>
+              <input type="number" className="so-input w-full" value={form.rate} onChange={(event) => setForm((prev) => ({ ...prev, rate: Number(event.target.value) }))} />
+            </div>
+            <div>
+              <label className="so-label">Amount</label>
+              <input type="number" className="so-input w-full" value={form.amount} onChange={(event) => setForm((prev) => ({ ...prev, amount: Number(event.target.value) }))} placeholder="Auto from item if blank" />
+            </div>
+            {(settings.customFields || []).map((field) => (
+              <div key={field.label}>
+                <label className="so-label">{field.label}</label>
+                <input className="so-input w-full" />
+              </div>
+            ))}
+            <div className="col-span-2">
+              <label className="so-label">Notes</label>
+              <textarea className="so-input w-full" rows={3} value={form.notes} onChange={(event) => setForm((prev) => ({ ...prev, notes: event.target.value }))} />
+            </div>
+          </div>
+        </div>
+      </SlidePanel>
+
+      {settingsOpen && (
+        <TransactionSettingsModal
+          estimateMode={settingsMode === 'estimate'}
+          settings={settings}
+          setSetting={setSetting}
+          newCustomField={newCustomField}
+          setNewCustomField={setNewCustomField}
+          addCustomField={addCustomField}
+          removeCustomField={removeCustomField}
+          onClose={() => setSettingsOpen(false)}
+          onSave={saveSettings}
+        />
+      )}
+    </div>
+  );
+}

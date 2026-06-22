@@ -5,8 +5,71 @@ import SalesOrder from '../models/SalesOrder.js';
 import Invoice from '../models/Invoice.js';
 import DeliveryChallan from '../models/DeliveryChallan.js';
 import SalesReturn from '../models/SalesReturn.js';
+import CreditNote from '../models/CreditNote.js';
+import Settings from '../models/Settings.js';
 
 const router = Router();
+
+const TRANSACTION_SETTING_DEFAULTS = {
+  vehicleNo: false,
+  ewayBillNo: false,
+  creditPeriod: false,
+  roundOff: false,
+  termsAndConditions: false,
+  minOrderValue: '',
+  discountName: '',
+  discountType: 'Percent',
+  chargesName: '',
+  customFields: [],
+};
+
+const ESTIMATE_SETTING_DEFAULTS = {
+  ...TRANSACTION_SETTING_DEFAULTS,
+  poNumber: '',
+};
+
+const normalizeTransactionSettings = (type, value = {}) => {
+  const defaults = type === 'estimate' ? ESTIMATE_SETTING_DEFAULTS : TRANSACTION_SETTING_DEFAULTS;
+  const customFields = Array.isArray(value.customFields)
+    ? value.customFields
+      .map((field) => ({
+        label: String(field.label || '').trim(),
+        enabled: field.enabled !== false,
+      }))
+      .filter((field, index, fields) => (
+        field.label && fields.findIndex((item) => item.label.toLowerCase() === field.label.toLowerCase()) === index
+      ))
+    : [];
+
+  return {
+    ...defaults,
+    ...value,
+    customFields,
+  };
+};
+
+router.get('/settings/:type', protect, async (req, res) => {
+  try {
+    let settings = await Settings.findOne();
+    if (!settings) settings = await Settings.create({});
+    const type = req.params.type || 'invoice';
+    res.json(normalizeTransactionSettings(type, settings.transactionSettings?.[type]));
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+router.put('/settings/:type', protect, async (req, res) => {
+  try {
+    let settings = await Settings.findOne();
+    if (!settings) settings = await Settings.create({});
+    const type = req.params.type || 'invoice';
+    const current = settings.transactionSettings || {};
+    const next = normalizeTransactionSettings(type, req.body || {});
+    settings.transactionSettings = { ...current, [type]: next };
+    settings.markModified('transactionSettings');
+    await settings.save();
+    res.json(next);
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
 
 // ─── ESTIMATES ─────────────────────────────────────────────────
 router.get('/estimates', protect, async (req, res) => {
@@ -121,6 +184,39 @@ router.put('/returns/:id', protect, async (req, res) => {
     }
     const ret = await SalesReturn.findByIdAndUpdate(req.params.id, req.body, { new: true });
     res.json(ret);
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+router.get('/credit-notes', protect, async (req, res) => {
+  try {
+    const { status, search } = req.query;
+    const filter = {};
+    if (status) filter.status = status;
+    if (search) filter.$or = [
+      { creditNoteNumber: new RegExp(search, 'i') },
+      { partyName: new RegExp(search, 'i') },
+    ];
+    const notes = await CreditNote.find(filter)
+      .populate('outlet', 'name')
+      .populate('party', 'name')
+      .populate('invoice', 'invoiceNumber')
+      .populate('createdBy', 'name')
+      .sort('-createdAt');
+    res.json(notes);
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+router.post('/credit-notes', protect, async (req, res) => {
+  try {
+    const note = await CreditNote.create({ ...req.body, createdBy: req.user._id });
+    res.status(201).json(note);
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+router.put('/credit-notes/:id', protect, async (req, res) => {
+  try {
+    const note = await CreditNote.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    res.json(note);
   } catch (e) { res.status(500).json({ message: e.message }); }
 });
 
