@@ -53,6 +53,7 @@ export const SALESON_NAV_DEF = [
       { path: '/app/parties/super-stockers', moduleId: 'parties-superstockers', label: 'Super Stockers' },
       { path: '/app/parties/suppliers',      moduleId: 'parties-suppliers',     label: 'Suppliers' },
       { path: '/app/parties/visited',        moduleId: 'parties-visited',       label: 'Visited' },
+      { path: '/app/parties/groups',         moduleId: 'parties-groups',        label: 'Groups' },
     ],
   },
   {

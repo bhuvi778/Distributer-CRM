@@ -35,6 +35,7 @@ import Distributors from './pages/parties/Distributors';
 import SuperStockers from './pages/parties/SuperStockers';
 import Suppliers from './pages/parties/Suppliers';
 import Visited from './pages/parties/Visited';
+import Groups from './pages/parties/Groups';
 
 // ── Sales ────────────────────────────────────────────────────────
 import Estimates from './pages/sales/Estimates';
@@ -109,6 +110,7 @@ function AppRoutes() {
           <Route path="super-stockers" element={<RoleRoute path="/app/parties/super-stockers"><P><SuperStockers /></P></RoleRoute>} />
           <Route path="suppliers"      element={<RoleRoute path="/app/parties/suppliers"><P><Suppliers /></P></RoleRoute>} />
           <Route path="visited"        element={<RoleRoute path="/app/parties/visited"><P><Visited /></P></RoleRoute>} />
+          <Route path="groups"         element={<RoleRoute path="/app/parties/groups"><P><Groups /></P></RoleRoute>} />
         </Route>
 
         {/* ── SALES ── */}

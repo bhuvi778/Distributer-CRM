@@ -639,6 +639,18 @@
     margin: 0 !important;
   }
 
+  .so-legacy-page > .so-party-page > .so-titlebar,
+  .so-legacy-page > .so-module-page > .so-titlebar {
+    min-height: 56px;
+    background: #fff;
+    border-bottom: 1px solid #d7dce5;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 14px;
+    margin: 0 !important;
+  }
+
   .so-legacy-page > div > div:first-child:has(h1) h1,
   .so-legacy-page .so-page-title {
     font-size: 1.4rem !important;

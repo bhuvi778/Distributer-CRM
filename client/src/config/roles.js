@@ -20,6 +20,7 @@ export const PERMISSION_MODULES = [
   { id: 'parties-superstockers',path: '/app/parties/super-stockers',label: 'Super Stockers', section: 'Parties' },
   { id: 'parties-suppliers',    path: '/app/parties/suppliers',     label: 'Suppliers',      section: 'Parties' },
   { id: 'parties-visited',      path: '/app/parties/visited',       label: 'Visited',        section: 'Parties' },
+  { id: 'parties-groups',       path: '/app/parties/groups',        label: 'Groups',         section: 'Parties' },
 
   // Sales sub-modules
   { id: 'sales-estimates', path: '/app/sales/estimates',         label: 'Estimates',         section: 'Sales' },
@@ -108,7 +109,7 @@ export const ROLE_DEFAULT_MODULES = {
   admin: [
     'dashboard','tracking','attendance','leads',
     'inventory-items','inventory-warehouses','inventory-pricelist','inventory-transfers',
-    'parties-customers','parties-distributors','parties-superstockers','parties-suppliers','parties-visited',
+    'parties-customers','parties-distributors','parties-superstockers','parties-suppliers','parties-visited','parties-groups',
     'sales-estimates','sales-orders','sales-invoices','sales-delivery','sales-returns',
     'purchases','production','van-sales',
     'payments','invoices','reports',
@@ -117,7 +118,7 @@ export const ROLE_DEFAULT_MODULES = {
   ],
   sales_executive: [
     'dashboard',
-    'parties-customers','parties-distributors','parties-superstockers','parties-suppliers','parties-visited',
+    'parties-customers','parties-distributors','parties-superstockers','parties-suppliers','parties-visited','parties-groups',
     'inventory-items',
     'sales-estimates','sales-orders','sales-invoices','sales-delivery','sales-returns',
     'attendance',
@@ -127,7 +128,7 @@ export const ROLE_DEFAULT_MODULES = {
   ],
   sales_rep: [
     'dashboard',
-    'parties-customers','parties-visited',
+    'parties-customers','parties-visited','parties-groups',
     'inventory-items',
     'sales-orders','sales-delivery',
     'attendance',
@@ -138,7 +139,7 @@ export const ROLE_DEFAULT_MODULES = {
   manager: [
     'dashboard','tracking','attendance','leads',
     'inventory-items','inventory-warehouses',
-    'parties-customers','parties-distributors',
+    'parties-customers','parties-distributors','parties-groups',
     'sales-estimates','sales-orders','sales-invoices','sales-delivery','sales-returns',
     'payments','invoices','reports',
     'routes-regions','routes-cities','routes-areas',
@@ -149,7 +150,7 @@ export const ROLE_DEFAULT_MODULES = {
   ],
   distributor: [
     'dashboard','inventory-items',
-    'parties-customers','parties-visited',
+    'parties-customers','parties-visited','parties-groups',
     'sales-orders','sales-invoices',
     'payments','reports','support','settings',
   ],

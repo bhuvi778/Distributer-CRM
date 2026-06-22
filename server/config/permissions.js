@@ -9,6 +9,7 @@ export const PERMISSION_MODULES = [
   { id: 'van-sales', path: '/app/van-sales', label: 'Van Sales', section: 'Sales' },
   { id: 'targets', path: '/app/targets', label: 'Target Meter', section: 'Sales' },
   { id: 'outlets', path: '/app/outlets', label: 'Outlets / Customers', section: 'Operations' },
+  { id: 'parties-groups', path: '/app/parties/groups', label: 'Party Groups', section: 'Operations' },
   { id: 'products', path: '/app/products', label: 'Products & SKUs', section: 'Operations' },
   { id: 'inventory', path: '/app/inventory', label: 'Inventory', section: 'Operations' },
   { id: 'routes', path: '/app/routes', label: 'Route Planner', section: 'Operations' },
