@@ -46,7 +46,7 @@ const DOCUMENT_TYPES = [
   'Purchase Return',
 ];
 
-const TEMPLATE_CARDS = ['Standard (A5 / A4)', 'Basic', 'Simple', 'Compact', 'Tally', 'Evergreen'];
+const TEMPLATE_CARDS = ['Standard (A5/A4)', 'Basic', 'Simple', 'Compact', 'Tally', 'Evergreen'];
 
 const DEFAULT_NOTIFICATION_MATRIX = {
   salesOrder: [
@@ -283,78 +283,341 @@ function MobileRow({ label, checked, onChange, disabled, premium = false, help =
   );
 }
 
+const previewItems = [
+  ['1', 'Aashirvaad Atta 10 Kg', '0351', '12%', '10 Pack', '420.00', '4200.00'],
+  ['2', 'Haldiram Bhujia Sev', '0421', '12%', '20 Packs', '140.00', '2800.00'],
+  ['3', 'Premium Mehboob Cashew', '0675', '12%', '40 Box', '220.00', '8800.00'],
+];
+
+const compactItems = [
+  ...previewItems,
+  ['4', 'Haldiram Navratan Mixture', '0421', '12%', '45 Box', '220.00', '9900.00'],
+  ['5', 'Aashirvaad Cow Ghee 500gm', '0421', '12%', '40 Box', '190.00', '7600.00'],
+  ['6', 'Haldiram All-in-one Mixture', '0421', '12%', '20 Pcs', '145.00', '29200.00'],
+  ['7', 'Premium Mehboob Walnuts 250gm', '0675', '12%', '50 Box', '210.00', '10500.00'],
+  ['8', 'Premium Seeds Dates 500gm', '0675', '12%', '40 Box', '185.00', '7400.00'],
+  ['9', 'Britannia Whole Wheat Bread', '0025', '5%', '50 Pcs', '55.00', '2750.00'],
+];
+
+function MiniLogo() {
+  return (
+    <div className="flex h-11 w-11 shrink-0 flex-col items-center justify-center bg-[#11174a] text-[4px] font-bold text-white">
+      <div className="mb-0.5 h-4 w-4 rotate-45 border-2 border-[#f59e0b]" />
+      COMPANY
+    </div>
+  );
+}
+
+function MiniSignature() {
+  return (
+    <div className="flex flex-col items-center justify-center text-center">
+      <div className="mb-1 h-9 w-14 rounded-[45%] border-b-2 border-black border-l border-r rotate-[-12deg]" />
+      <div className="text-[5px]">Authorised Signature</div>
+    </div>
+  );
+}
+
+function MiniQr() {
+  return (
+    <div className="grid h-12 w-12 grid-cols-5 grid-rows-5 gap-[1px] bg-white p-1">
+      {Array.from({ length: 25 }).map((_, index) => (
+        <span key={index} className={(index * 7) % 4 === 0 || index < 2 || index > 21 ? 'bg-black' : 'bg-white'} />
+      ))}
+    </div>
+  );
+}
+
+function CompanyBlock({ centered = false }) {
+  return (
+    <div className={centered ? 'text-center' : ''}>
+      <div className="text-[8px] font-bold">Punia Industries Pvt Ltd</div>
+      <div>K-999, Site-40, UPSIDC, Industrial Area, Greater Noida</div>
+      <div><b>Mobile:</b> 9940048111</div>
+      <div><b>GSTIN:</b> 29RPLPM2981K1Z0</div>
+    </div>
+  );
+}
+
+function PartyBox({ title = 'Bill To' }) {
+  return (
+    <div className="border border-black p-1">
+      <div className="uppercase">{title}</div>
+      <div className="font-bold">Narayan Enterprises</div>
+      <div># 6 - C, New Ram Nagar, Ambala Cantt - 133 001, Haryana</div>
+      <div>GSTIN: 28AUVPJ981F1YA</div>
+    </div>
+  );
+}
+
+function SimpleItems({ rows = previewItems, fullTax = false, tally = false }) {
+  const cols = tally
+    ? 'grid-cols-[16px_1fr_28px_30px_38px_28px_25px_36px]'
+    : fullTax
+      ? 'grid-cols-[16px_1fr_30px_25px_36px_32px_36px]'
+      : 'grid-cols-[16px_1fr_34px_32px_34px_34px]';
+  const headers = tally
+    ? ['#', 'Items', 'HSN', 'Qty', 'Rate Incl.', 'Rate', 'per', 'Amount']
+    : fullTax
+      ? ['#', 'Items', 'HSN', 'Tax', 'Qty', 'Rate', 'Amount']
+      : ['#', 'Items', 'MRP', 'Qty', 'Rate', 'Amount'];
+
+  return (
+    <div className="border border-black">
+      <div className={`grid ${cols} bg-[#f2f4fa] text-center font-bold`}>
+        {headers.map((item) => <span key={item} className="border-r border-black p-0.5 last:border-r-0">{item}</span>)}
+      </div>
+      {rows.map((row) => (
+        <div key={`${row[0]}-${row[1]}`} className={`grid ${cols} min-h-[15px] border-t border-slate-300`}>
+          {(tally
+            ? [row[0], row[1], row[2], row[4], row[5], row[5], 'Pack', row[6]]
+            : fullTax
+              ? [row[0], row[1], row[2], row[3], row[4], row[5], row[6]]
+              : [row[0], row[1], row[5], row[4], row[5], row[6]]
+          ).map((value, index) => (
+            <span key={`${value}-${index}`} className={`${index === 1 ? 'font-bold text-left' : 'text-right'} border-r border-slate-300 p-0.5 last:border-r-0`}>
+              {value}
+            </span>
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function TaxSummary() {
+  return (
+    <div className="border border-black">
+      <div className="grid grid-cols-[1fr_1fr_1fr_1fr_1fr] bg-[#f2f4fa] text-center font-bold">
+        {['HSN/SAC', 'Taxable Value', 'SGST', 'CGST', 'Total Tax'].map((item) => (
+          <span key={item} className="border-r border-black p-0.5 last:border-r-0">{item}</span>
+        ))}
+      </div>
+      {['0351', '0421', '0675'].map((code, index) => (
+        <div key={code} className="grid grid-cols-[1fr_1fr_1fr_1fr_1fr] border-t border-slate-300">
+          <span className="border-r border-slate-300 p-0.5">{code}</span>
+          <span className="border-r border-slate-300 p-0.5 text-right">{[4200, 2800, 8800][index]}</span>
+          <span className="border-r border-slate-300 p-0.5 text-right">6%</span>
+          <span className="border-r border-slate-300 p-0.5 text-right">6%</span>
+          <span className="p-0.5 text-right">{[504, 336, 1056][index]}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function TermsBankFooter({ qr = false }) {
+  return (
+    <div className="grid grid-cols-[1.2fr_0.8fr_0.8fr] border-x border-b border-black">
+      <div className="border-r border-black p-1">
+        <b>Terms and Conditions</b>
+        <div>1. Goods once sold cannot be taken back or exchanged.</div>
+        <div>2. Subject to local jurisdiction</div>
+      </div>
+      <div className="border-r border-black p-1">
+        <b>Bank Details</b>
+        <div>Account No: 50210076812438</div>
+        <div>IFSC: HDFC0000239</div>
+        <div>Branch: Gandhi Road</div>
+        {qr && <MiniQr />}
+      </div>
+      <MiniSignature />
+    </div>
+  );
+}
+
+function StandardTemplate() {
+  return (
+    <div className="border border-black bg-white text-[5px] leading-[1.15]">
+      <div className="grid grid-cols-[64px_1fr_86px] border-b border-black">
+        <div className="p-2"><MiniLogo /></div>
+        <div className="border-r border-black p-1"><CompanyBlock /></div>
+        <div className="p-1">
+          <div><b>Invoice # :</b> INV-0001</div>
+          <div><b>Invoice Date :</b> 06-02-2024</div>
+          <div><b>Due Date:</b> 06-04-2024</div>
+        </div>
+      </div>
+      <div className="grid grid-cols-2">
+        <PartyBox title="Bill To" />
+        <PartyBox title="Ship To" />
+      </div>
+      <div className="border-x border-black">
+        <div className="grid grid-cols-[14px_1fr_25px_30px_26px_27px_27px_32px_32px_38px] bg-[#f2f4fa] text-center font-bold">
+          {['#', 'Items', 'HSN', 'MRP', 'Qty', 'Free', 'Rate', 'Disc', 'CGST', 'Amount'].map((item) => (
+            <span key={item} className="border-r border-black p-0.5 last:border-r-0">{item}</span>
+          ))}
+        </div>
+        {previewItems.map((row) => (
+          <div key={row[1]} className="grid min-h-[18px] grid-cols-[14px_1fr_25px_30px_26px_27px_27px_32px_32px_38px] border-t border-slate-300">
+            {[row[0], row[1], row[2], '460.00', row[4], '0', row[5], '0', '252.00', row[6]].map((value, index) => (
+              <span key={`${value}-${index}`} className={`${index === 1 ? 'font-bold text-left' : 'text-right'} border-r border-slate-300 p-0.5 last:border-r-0`}>{value}</span>
+            ))}
+          </div>
+        ))}
+        {['Taxable Amount', 'SGST', 'CGST', 'Round Off', 'Grand Total'].map((row, index) => (
+          <div key={row} className="grid grid-cols-[1fr_54px] border-t border-slate-300">
+            <span className="p-0.5 pl-4 font-bold">{row}</span>
+            <span className="border-l border-slate-300 p-0.5 text-right font-bold">{['Rs 15,800', 'Rs 948', 'Rs 948', 'Rs 0', 'Rs 17,696'][index]}</span>
+          </div>
+        ))}
+      </div>
+      <TermsBankFooter />
+    </div>
+  );
+}
+
+function BasicTemplate() {
+  return (
+    <div className="border border-black bg-white text-[5px] leading-[1.18]">
+      <div className="grid grid-cols-[64px_1fr_86px] border-b border-black">
+        <div className="p-2"><MiniLogo /></div>
+        <div className="border-r border-black p-1"><CompanyBlock /></div>
+        <div className="p-1"><b>Invoice # :</b> INV-0001<br /><b>Invoice Date:</b> 06-02-2024<br /><b>Due Date:</b> 06-04-2024</div>
+      </div>
+      <div className="grid grid-cols-2"><PartyBox title="Bill To" /><PartyBox title="Ship To" /></div>
+      <SimpleItems fullTax={false} />
+      <div className="grid grid-cols-[1fr_70px] border-x border-black text-right font-bold">
+        {['Sub Total', 'Round Off', 'Grand Total'].map((row, index) => (
+          <div key={row} className="contents">
+            <span className="border-b border-slate-300 p-0.5">{row}</span>
+            <span className="border-b border-l border-slate-300 p-0.5">{['Rs 15,800', 'Rs 0.00', 'Rs 15,800'][index]}</span>
+          </div>
+        ))}
+      </div>
+      <TermsBankFooter />
+    </div>
+  );
+}
+
+function SimpleTemplate() {
+  return (
+    <div className="border border-black bg-white text-[5px] leading-[1.12]">
+      <div className="flex h-4 items-center justify-between border-b border-black bg-[#f4f4f4] px-1"><b>TAX INVOICE</b><span>Original for Recipient</span></div>
+      <div className="grid grid-cols-[78px_1fr_138px] border-b border-black">
+        <div className="p-2"><MiniLogo /></div>
+        <div className="p-1"><CompanyBlock /></div>
+        <div className="grid grid-cols-2 border-l border-black">
+          {['Invoice #', 'Invoice Date', 'Place Of Supply', 'Due Date'].map((label, index) => (
+            <div key={label} className="border-b border-r border-black p-1"><b>{label}</b><br />{index % 2 ? '06-02-2024' : 'INV-0001'}</div>
+          ))}
+          <div className="col-span-2 p-1"><b>Shipping Address</b><br /># 6 - C, New Ram Nagar, Haryana</div>
+        </div>
+      </div>
+      <PartyBox title="Customer Details" />
+      <SimpleItems fullTax />
+      <div className="grid grid-cols-[1fr_120px] border-x border-b border-black">
+        <div className="p-1">Total Items / Qty <b className="ml-8">3 / 70.00</b></div>
+        <div className="border-l border-black p-1 text-right font-bold">Taxable Amount : Rs 15,800<br />SGST : Rs 948<br />CGST : Rs 948<br />Amount Payable : Rs 17696</div>
+      </div>
+      <TaxSummary />
+      <div className="grid grid-cols-[1fr_70px_1fr] border-x border-b border-black">
+        <div className="p-1"><b>Bank Details :</b><br />Bank: HDFC Bank<br />Account #: 50210076812438<br />Branch: Gandhi Road</div>
+        <div className="flex items-center justify-center"><MiniQr /></div>
+        <MiniSignature />
+      </div>
+      <div className="grid grid-cols-2 border-x border-b border-black"><div className="p-1"><b>Notes :</b><br />Thank you for the business</div><div className="border-l border-black p-1"><b>Terms and Conditions :</b><br />Goods once sold cannot be taken back.</div></div>
+    </div>
+  );
+}
+
+function CompactTemplate() {
+  return (
+    <div className="border border-black bg-white text-[4.5px] leading-[1.08]">
+      <div className="flex h-3 items-center justify-end border-b border-black bg-[#f4f4f4] px-1">Original for Recipient</div>
+      <div className="grid grid-cols-[80px_1fr] border-b border-black">
+        <div className="p-2"><MiniLogo /></div>
+        <div className="flex items-center justify-center p-1"><CompanyBlock centered /></div>
+      </div>
+      <div className="grid grid-cols-2 border-b border-black">
+        <PartyBox title="Customer Details" />
+        <div className="p-1"><b>Invoice # :</b> INV-0001<br /><b>Invoice Date :</b> 06-02-2024<br /><b>Due Date :</b> 06-04-2024</div>
+      </div>
+      <SimpleItems rows={compactItems} fullTax />
+      <div className="border-x border-black p-1 text-right font-bold">Taxable Amount Rs 83150.00<br />CGST 2.5% @ 2750 Rs 68.75<br />SGST 6% @ 80400 Rs 4824.00<br />Round off Rs 0.50</div>
+      <TaxSummary />
+      <div className="grid grid-cols-[1fr_70px_1fr] border-x border-b border-black">
+        <div className="p-1"><b>Bank Details :</b><br />Bank: HDFC Bank<br />IFSC: HDFC0000239</div>
+        <div className="flex items-center justify-center"><MiniQr /></div>
+        <MiniSignature />
+      </div>
+      <div className="grid grid-cols-2 border-x border-b border-black"><div className="p-1"><b>Notes :</b><br />Thank you for the business</div><div className="border-l border-black p-1"><b>Terms :</b><br />Subject to local jurisdiction</div></div>
+    </div>
+  );
+}
+
+function TallyTemplate() {
+  return (
+    <div className="border border-black bg-white text-[5px] leading-[1.1]">
+      <div className="grid grid-cols-[92px_1fr_138px] border-b border-black">
+        <div className="p-2"><MiniLogo /></div>
+        <div className="border-r border-black p-1"><CompanyBlock /></div>
+        <div className="grid grid-cols-2">
+          {['Invoice #', 'Invoice Date', 'Delivery Note', 'Mode/Terms', 'Buyer Order No.', 'Dated', 'Dispatch Doc No.', 'Dispatched Through'].map((label, index) => (
+            <div key={label} className="border-b border-r border-black p-1"><b>{label}</b><br />{index % 2 ? '06-02-2024' : index === 3 ? 'Online' : 'SO NO.1234'}</div>
+          ))}
+        </div>
+      </div>
+      <PartyBox title="Consignee (Ship to)" />
+      <PartyBox title="Buyer (Bill to)" />
+      <SimpleItems tally />
+      <div className="border-x border-b border-black p-1"><b>Amount Chargeable (in words)</b><br />Seventeen Thousand Six Hundred and Ninety Six Only</div>
+      <TaxSummary />
+      <div className="grid grid-cols-[1fr_70px_1fr] border-x border-b border-black">
+        <div className="p-1"><b>Bank Details :</b><br />Bank: HDFC Bank<br />Account #: 50210076812438<br />IFSC: HDFC0000239</div>
+        <div className="flex items-center justify-center"><MiniQr /></div>
+        <MiniSignature />
+      </div>
+      <div className="grid grid-cols-2 border-x border-b border-black"><div className="p-1"><b>Notes :</b><br />Thank you for the business</div><div className="border-l border-black p-1"><b>Terms and Conditions :</b><br />Interest @ 18% beyond 15 days.</div></div>
+    </div>
+  );
+}
+
+function EvergreenTemplate() {
+  return (
+    <div className="border border-black bg-white text-[5px] leading-[1.1]">
+      <div className="flex h-4 items-center justify-between border-b border-black bg-[#f4f4f4] px-1"><b>TAX INVOICE</b><span>Original for Recipient</span></div>
+      <div className="grid grid-cols-[1fr_76px] border-b border-black">
+        <div className="p-2"><CompanyBlock /></div>
+        <div className="p-2"><MiniLogo /></div>
+      </div>
+      <div className="grid grid-cols-3 border-b border-black text-center font-bold">
+        <div className="border-r border-black p-1">Invoice Number<br />INV-0001</div>
+        <div className="border-r border-black p-1">Invoice Date<br />06-02-2024</div>
+        <div className="p-1">Due Date<br />06-04-2024</div>
+      </div>
+      <div className="grid grid-cols-2"><PartyBox title="Bill To" /><PartyBox title="Ship To" /></div>
+      <SimpleItems fullTax />
+      <div className="border-x border-black p-1 text-right font-bold">Taxable Amount Rs 15800.00<br />CGST 6% Rs 948.00<br />SGST 6% Rs 948.00<br />Round off Rs 0.00<br />Total Rs 17696</div>
+      <TaxSummary />
+      <div className="grid grid-cols-[1fr_70px_1fr] border-x border-b border-black">
+        <div className="p-1"><b>Bank Details :</b><br />Bank: HDFC Bank<br />Branch: Gandhi Road</div>
+        <div className="flex items-center justify-center"><MiniQr /></div>
+        <MiniSignature />
+      </div>
+      <div className="grid grid-cols-2 border-x border-b border-black"><div className="p-1"><b>Notes :</b><br />Thank you for the business</div><div className="border-l border-black p-1"><b>Terms :</b><br />Goods once sold cannot be taken back.</div></div>
+    </div>
+  );
+}
+
 function TemplatePreview({ name, selected, onSelect }) {
-  const dense = name === 'Compact' || name === 'Tally';
+  const templates = {
+    'Standard (A5/A4)': <StandardTemplate />,
+    Basic: <BasicTemplate />,
+    Simple: <SimpleTemplate />,
+    Compact: <CompactTemplate />,
+    Tally: <TallyTemplate />,
+    Evergreen: <EvergreenTemplate />,
+  };
+
   return (
     <button
       type="button"
       onClick={onSelect}
       className={`group relative flex h-[500px] flex-col border bg-white text-left transition ${selected ? 'border-[6px] border-[#1749bd]' : 'border-[#e5e7eb]'}`}
     >
-      <div className="flex flex-1 items-center justify-center bg-white px-6 pt-8">
-        <div className={`relative w-full max-w-[230px] border border-slate-700 bg-white p-3 text-[5px] text-slate-900 shadow-sm ${dense ? 'max-w-[250px]' : ''}`}>
-          <div className="mb-2 flex justify-between border-b border-slate-800 pb-2">
-            <div className="flex gap-2">
-              <div className="h-7 w-7 bg-[#111c4e]" />
-              <div>
-                <div className="font-bold">Punia Industries Pvt Ltd</div>
-                <div>K-99, Site-IV, UPSIDC, Kasna</div>
-                <div>GSTIN: 29PJHPI1234K1Z8</div>
-              </div>
-            </div>
-            <div className="text-right">
-              <div className="font-bold">TAX INVOICE</div>
-              <div>Invoice # INV-001</div>
-              <div>Due Date 06-04-2024</div>
-            </div>
-          </div>
-          <div className="mb-2 grid grid-cols-2 gap-2">
-            <div className="border border-slate-400 p-1">
-              <div className="font-bold">BILL TO</div>
-              <div>Narayan Enterprises</div>
-              <div>C-70, New Anaj Mandi</div>
-            </div>
-            <div className="border border-slate-400 p-1">
-              <div className="font-bold">SHIP TO</div>
-              <div>Narayan Enterprises</div>
-              <div>Hisar, Haryana</div>
-            </div>
-          </div>
-          <div className="border border-slate-800">
-            <div className="grid grid-cols-[1fr_26px_26px_30px] bg-slate-100 font-bold">
-              <span className="border-r border-slate-500 p-1">Items</span>
-              <span className="border-r border-slate-500 p-1">Qty</span>
-              <span className="border-r border-slate-500 p-1">Rate</span>
-              <span className="p-1">Amount</span>
-            </div>
-            {['Ashirvaad Atta 10 Kg', 'Haldiram Bhujia Sev', 'Premium Cashew'].map((item) => (
-              <div key={item} className="grid grid-cols-[1fr_26px_26px_30px] border-t border-slate-300">
-                <span className="border-r border-slate-300 p-1">{item}</span>
-                <span className="border-r border-slate-300 p-1">10</span>
-                <span className="border-r border-slate-300 p-1">450</span>
-                <span className="p-1">4500</span>
-              </div>
-            ))}
-          </div>
-          <div className="mt-2 grid grid-cols-2 gap-2">
-            <div className="border border-slate-400 p-1">
-              <div className="font-bold">Bank Details</div>
-              <div>HDFC Bank</div>
-              <div>IFSC: HDFC000123</div>
-            </div>
-            <div className="border border-slate-400 p-1 text-right">
-              <div>Taxable Amount 15000.00</div>
-              <div>GST 18% 2700.00</div>
-              <div className="font-bold">Grand Total 17700.00</div>
-            </div>
-          </div>
-          <div className="mt-2 flex items-end justify-between">
-            <div className="h-9 w-9 border border-slate-700" />
-            <div className="text-right">
-              <div className="mb-1 h-5 w-12 border-b border-slate-700" />
-              <div>Authorised Signature</div>
-            </div>
-          </div>
+      <div className="flex flex-1 items-start justify-center overflow-hidden bg-white px-5 pt-5">
+        <div className="relative h-[390px] w-full max-w-[300px] overflow-hidden bg-white text-slate-950 shadow-sm">
+          {templates[name]}
           <div className="absolute inset-0 hidden items-center justify-center bg-black/25 text-sm font-semibold text-white group-hover:flex">
             <Eye size={16} className="mr-1" /> Preview
           </div>
