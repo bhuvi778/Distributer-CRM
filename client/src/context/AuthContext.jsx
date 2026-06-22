@@ -3,6 +3,7 @@ import api from '../api/axios';
 import {
   canDo, canAccessPath, getDefaultPath, getPortalLabel, ROLE_META, getUserAllowedPaths,
 } from '../config/roles';
+import { getDemoUser } from '../config/demoCredentials';
 
 const AuthContext = createContext(null);
 
@@ -23,6 +24,10 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     const token = localStorage.getItem('token');
+    if (token === 'demo-session') {
+      setLoading(false);
+      return;
+    }
     if (token) {
       refreshUser()
         .catch(() => {
@@ -37,14 +42,28 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const login = async (email, password) => {
-    const { data } = await api.post('/auth/login', {
-      email: email.trim().toLowerCase(),
-      password,
-    });
-    localStorage.setItem('token', data.token);
-    localStorage.setItem('user', JSON.stringify(data));
-    setUser(data);
-    return data;
+    const normalizedEmail = email.trim().toLowerCase();
+    const demoUser = getDemoUser(normalizedEmail, password);
+
+    if (demoUser) {
+      localStorage.setItem('token', 'demo-session');
+      localStorage.setItem('user', JSON.stringify(demoUser));
+      setUser(demoUser);
+      return demoUser;
+    }
+
+    try {
+      const { data } = await api.post('/auth/login', {
+        email: normalizedEmail,
+        password,
+      });
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify(data));
+      setUser(data);
+      return data;
+    } catch (error) {
+      throw error;
+    }
   };
 
   const register = async (formData) => {

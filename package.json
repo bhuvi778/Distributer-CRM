@@ -7,7 +7,8 @@
     "server": "npm run --prefix server dev",
     "client": "npm run --prefix client dev",
     "install-all": "npm install && npm install --prefix server && npm install --prefix client",
-    "seed": "npm run --prefix server seed"
+    "seed": "npm run --prefix server seed",
+    "demo-users": "npm run --prefix server demo-users"
   },
   "dependencies": {
     "concurrently": "^8.2.2"

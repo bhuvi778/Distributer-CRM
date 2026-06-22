@@ -3,14 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowRight, Eye, EyeOff, Lock, Mail } from 'lucide-react';
 import { getDefaultPath } from '../config/roles';
 import { useAuth } from '../context/AuthContext';
-
-const DEMO_CREDENTIALS = [
-  { role: 'Super Admin', email: 'superadmin@saleson.com', password: 'password123' },
-  { role: 'Admin', email: 'admin@saleson.com', password: 'password123' },
-  { role: 'Manufacturer', email: 'manufacturer@saleson.com', password: 'password123' },
-  { role: 'Distributor', email: 'distributor@saleson.com', password: 'password123' },
-  { role: 'Sales Executive', email: 'sales@saleson.com', password: 'password123' },
-];
+import { DEMO_CREDENTIALS } from '../config/demoCredentials';
 
 export default function Login() {
   const [showPass, setShowPass] = useState(false);

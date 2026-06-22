@@ -31,8 +31,8 @@ const seed = async () => {
 
   const superAdmin = await User.create({
     name: 'Super Admin',
-    email: 'superadmin@distriFlow.com',
-    password: 'super123',
+    email: 'superadmin@saleson.com',
+    password: 'password123',
     role: 'super_admin',
     permissions: ['*'],
     phone: '9876543000',
@@ -40,8 +40,8 @@ const seed = async () => {
 
   const admin1 = await User.create({
     name: 'Admin User',
-    email: 'admin@distriFlow.com',
-    password: 'admin123',
+    email: 'admin@saleson.com',
+    password: 'password123',
     role: 'admin',
     permissions: ['*'],
     phone: '9876543210',
@@ -49,10 +49,30 @@ const seed = async () => {
     createdBy: superAdmin._id,
   });
 
+  await User.create({
+    name: 'Manufacturer User',
+    email: 'manufacturer@saleson.com',
+    password: 'password123',
+    role: 'manufacturer',
+    permissions: [],
+    phone: '9876543211',
+    createdBy: superAdmin._id,
+  });
+
+  await User.create({
+    name: 'Distributor User',
+    email: 'distributor@saleson.com',
+    password: 'password123',
+    role: 'distributor',
+    permissions: [],
+    phone: '9876543214',
+    createdBy: admin1._id,
+  });
+
   const salesExec1 = await User.create({
-    name: 'Amit Sharma',
-    email: 'amit@distriFlow.com',
-    password: 'exec123',
+    name: 'Sales Executive',
+    email: 'sales@saleson.com',
+    password: 'password123',
     role: 'sales_executive',
     phone: '9876543212',
     territory: 'Delhi NCR',
@@ -63,8 +83,8 @@ const seed = async () => {
 
   const salesExec2 = await User.create({
     name: 'Priya Singh',
-    email: 'priya@distriFlow.com',
-    password: 'exec123',
+    email: 'priya@saleson.com',
+    password: 'password123',
     role: 'sales_executive',
     phone: '9876543213',
     territory: 'Mumbai',
@@ -261,10 +281,11 @@ const seed = async () => {
   console.log('\n✅ Seed completed!');
   console.log('\nLogin credentials:');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  console.log('  🔴  Super Admin:  superadmin@distriFlow.com / super123');
-  console.log('  🔵  Admin:        admin@distriFlow.com / admin123');
-  console.log('  🟢  Sales Exec:   amit@distriFlow.com / exec123');
-  console.log('  🟢  Sales Exec:   priya@distriFlow.com / exec123');
+  console.log('  Super Admin:      superadmin@saleson.com / password123');
+  console.log('  Admin:            admin@saleson.com / password123');
+  console.log('  Manufacturer:     manufacturer@saleson.com / password123');
+  console.log('  Distributor:      distributor@saleson.com / password123');
+  console.log('  Sales Executive:  sales@saleson.com / password123');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   console.log('  🟡  Retailer 1:   retailer1@distriFlow.com / retailer123');
   console.log('  🟡  Retailer 2:   retailer2@distriFlow.com / retailer123');

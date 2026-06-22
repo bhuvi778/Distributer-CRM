@@ -6,6 +6,85 @@ import Outlet from '../models/Outlet.js';
 const generateToken = (id, type = 'user') =>
   jwt.sign({ id, type }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRE });
 
+const demoAccounts = [
+  {
+    name: 'Super Admin',
+    email: 'superadmin@saleson.com',
+    password: 'password123',
+    role: 'super_admin',
+    permissions: ['*'],
+    phone: '9876543000',
+  },
+  {
+    name: 'Admin User',
+    email: 'admin@saleson.com',
+    password: 'password123',
+    role: 'admin',
+    permissions: ['*'],
+    phone: '9876543210',
+    territory: 'North India',
+  },
+  {
+    name: 'Manufacturer User',
+    email: 'manufacturer@saleson.com',
+    password: 'password123',
+    role: 'manufacturer',
+    permissions: [],
+    phone: '9876543211',
+  },
+  {
+    name: 'Distributor User',
+    email: 'distributor@saleson.com',
+    password: 'password123',
+    role: 'distributor',
+    permissions: [],
+    phone: '9876543214',
+  },
+  {
+    name: 'Sales Executive',
+    email: 'sales@saleson.com',
+    password: 'password123',
+    role: 'sales_executive',
+    permissions: [],
+    phone: '9876543212',
+    territory: 'Delhi NCR',
+    targetAmount: 500000,
+    lastLocation: { lat: 28.6139, lng: 77.2090, updatedAt: new Date() },
+  },
+];
+
+const findDemoAccount = (email, password) =>
+  demoAccounts.find((account) => account.email === email && account.password === password);
+
+const applyDemoAccount = (user, account, resetPassword = false) => {
+  user.name = account.name;
+  if (resetPassword) user.password = account.password;
+  user.role = account.role;
+  user.permissions = account.permissions;
+  user.phone = account.phone;
+  user.territory = account.territory;
+  user.targetAmount = account.targetAmount || 0;
+  user.lastLocation = account.lastLocation;
+  user.isActive = true;
+  user.useCustomAccess = false;
+  return user;
+};
+
+const sendUserAuth = (res, user) =>
+  res.json({
+    _id: user._id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    permissions: user.permissions,
+    allowedModules: user.allowedModules,
+    useCustomAccess: user.useCustomAccess,
+    jobTitle: user.jobTitle,
+    department: user.department,
+    createdBy: user.createdBy,
+    token: generateToken(user._id),
+  });
+
 export const register = async (req, res) => {
   try {
     const { name, email, password, role, phone } = req.body;
@@ -49,23 +128,28 @@ export const login = async (req, res) => {
 
     const user = await User.findOne({ email }).select('+password');
     if (user) {
+      const demoAccount = findDemoAccount(email, password);
       if (!(await user.matchPassword(password))) {
+        if (demoAccount) {
+          applyDemoAccount(user, demoAccount, true);
+          await user.save();
+          return sendUserAuth(res, user);
+        }
         return res.status(401).json({ message: 'Invalid credentials' });
       }
+      if (demoAccount) {
+        applyDemoAccount(user, demoAccount);
+        await user.save();
+        return sendUserAuth(res, user);
+      }
       if (!user.isActive) return res.status(403).json({ message: 'Account deactivated' });
-      return res.json({
-        _id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        permissions: user.permissions,
-        allowedModules: user.allowedModules,
-        useCustomAccess: user.useCustomAccess,
-        jobTitle: user.jobTitle,
-        department: user.department,
-        createdBy: user.createdBy,
-        token: generateToken(user._id),
-      });
+      return sendUserAuth(res, user);
+    }
+
+    const demoAccount = findDemoAccount(email, password);
+    if (demoAccount) {
+      const createdUser = await User.create(demoAccount);
+      return sendUserAuth(res, createdUser);
     }
 
     const outlet = await Outlet.findOne({ loginEmail: email }).select('+loginPassword');
