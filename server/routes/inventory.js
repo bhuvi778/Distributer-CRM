@@ -5,6 +5,7 @@ import Inventory from '../models/Inventory.js';
 import Warehouse from '../models/Warehouse.js';
 import PriceList from '../models/PriceList.js';
 import TransferOrder from '../models/TransferOrder.js';
+import ItemOption from '../models/ItemOption.js';
 
 const router = Router();
 const FIELD_ROLES = ['sales_executive', 'sales_rep'];
@@ -15,6 +16,66 @@ const denyFieldWrite = (req, res, next) => {
   }
   return next();
 };
+
+const OPTION_TYPES = ['category', 'brand'];
+
+const normalizeOptionName = (value) => String(value || '').trim().replace(/\s+/g, ' ');
+
+const syncProductOptions = async (type) => {
+  const field = type === 'category' ? 'category' : 'brand';
+  const names = (await Product.distinct(field, { [field]: { $nin: [null, ''] } }))
+    .map(normalizeOptionName)
+    .filter(Boolean);
+
+  for (const name of names) {
+    const exists = await ItemOption.findOne({ type, name });
+    if (!exists) await ItemOption.create({ type, name, isActive: true });
+  }
+};
+
+router.get('/item-options', protect, async (req, res) => {
+  try {
+    const type = req.query.type;
+    if (type && !OPTION_TYPES.includes(type)) {
+      return res.status(400).json({ message: 'Invalid option type' });
+    }
+
+    const types = type ? [type] : OPTION_TYPES;
+    await Promise.all(types.map(syncProductOptions));
+
+    const filter = { isActive: true };
+    if (type) filter.type = type;
+    const options = await ItemOption.find(filter).sort({ type: 1, name: 1 });
+    res.json(options);
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+router.post('/item-options', protect, denyFieldWrite, async (req, res) => {
+  try {
+    const type = String(req.body.type || '').trim();
+    const name = normalizeOptionName(req.body.name);
+    if (!OPTION_TYPES.includes(type)) return res.status(400).json({ message: 'Invalid option type' });
+    if (!name) return res.status(400).json({ message: 'Name is required' });
+
+    const option = await ItemOption.findOneAndUpdate(
+      { type, name },
+      { type, name, isActive: true, createdBy: req.user._id },
+      { upsert: true, new: true, setDefaultsOnInsert: true },
+    );
+    res.status(201).json(option);
+  } catch (e) {
+    if (e.code === 11000) return res.status(409).json({ message: 'Option already exists' });
+    res.status(500).json({ message: e.message });
+  }
+});
+
+router.delete('/item-options/:id', protect, denyFieldWrite, async (req, res) => {
+  try {
+    const option = await ItemOption.findByIdAndUpdate(req.params.id, { isActive: false }, { new: true });
+    if (!option) return res.status(404).json({ message: 'Option not found' });
+    res.json({ message: 'Option deleted', option });
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
 
 // ─── ITEMS (Products) ───────────────────────────────────────────
 router.get('/items', protect, async (req, res) => {

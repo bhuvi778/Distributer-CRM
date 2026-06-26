@@ -11,6 +11,7 @@ import Inventory from './models/Inventory.js';
 import Target from './models/Target.js';
 import Settings from './models/Settings.js';
 import Attendance from './models/Attendance.js';
+import ItemOption from './models/ItemOption.js';
 
 dotenv.config();
 
@@ -30,6 +31,7 @@ const seed = async () => {
     Target.deleteMany(),
     Settings.deleteMany(),
     Attendance.deleteMany(),
+    ItemOption.deleteMany(),
   ]);
 
   const superAdmin = await User.create({

@@ -166,6 +166,69 @@ function ItemSettingsModal({ settings, setSettings, saving, onClose, onSave }) {
   );
 }
 
+function ItemOptionModal({ type, options, value, saving, onNameChange, onCreate, onDelete, onClose }) {
+  const title = type === 'category' ? 'Categories' : 'Brands';
+  const label = type === 'category' ? 'Category name' : 'Brand name';
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/45" onClick={onClose} />
+      <div className="relative w-[min(560px,calc(100vw-32px))] bg-white rounded-[3px] border border-[#d7dce5] shadow-2xl">
+        <div className="h-[66px] flex items-center justify-between px-5 border-b border-[#eceff4]">
+          <h2 className="text-xl font-semibold text-[#202733]">Manage {title}</h2>
+          <button type="button" onClick={onClose} className="text-[#777] hover:text-[#111]">
+            <X size={22} strokeWidth={3} />
+          </button>
+        </div>
+        <div className="p-5 space-y-5">
+          <div className="flex gap-2">
+            <input
+              className="so-input flex-1"
+              value={value}
+              onChange={(event) => onNameChange(event.target.value)}
+              placeholder={label}
+              autoFocus
+            />
+            <button type="button" onClick={onCreate} disabled={saving} className="so-btn-primary text-sm min-w-[96px]">
+              {saving ? 'Saving...' : 'Add'}
+            </button>
+          </div>
+
+          <div className="max-h-[320px] overflow-y-auto border border-[#e5e7eb]">
+            {options.length === 0 ? (
+              <div className="py-10 text-center text-sm text-[#667085]">No {title.toLowerCase()} added yet.</div>
+            ) : (
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-[#f8fafc] text-left">
+                    <th className="h-11 px-4 font-semibold text-[#101828]">Name</th>
+                    <th className="h-11 w-[90px] px-4 font-semibold text-[#101828]">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {options.map((option) => (
+                    <tr key={option._id} className="border-t border-[#e5e7eb]">
+                      <td className="h-12 px-4 font-medium text-[#101828]">{option.name}</td>
+                      <td className="h-12 px-4">
+                        <button type="button" onClick={() => onDelete(option)} className="so-icon-btn !h-8 !w-8" title={`Delete ${option.name}`}>
+                          <Trash2 size={15} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
+        <div className="h-[58px] px-5 border-t border-[#d7dce5] bg-[#fafafa] flex items-center justify-end">
+          <button type="button" onClick={onClose} className="h-[34px] min-w-[104px] rounded-[3px] border border-[#667085] bg-white text-[#667085] text-base">Close</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Items() {
   const { user } = useAuth();
   const isFieldReadOnly = ['sales_executive', 'sales_rep'].includes(user?.role);
@@ -186,12 +249,22 @@ export default function Items() {
   const [itemSettings, setItemSettings] = useState(ITEM_SETTING_DEFAULTS);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsSaving, setSettingsSaving] = useState(false);
+  const [optionModal, setOptionModal] = useState(null);
+  const [optionName, setOptionName] = useState('');
+  const [optionSaving, setOptionSaving] = useState(false);
   const imgRef = useRef(null);
+
+  const loadItemOptions = useCallback(async () => {
+    const { data } = await api.get('/inventory/item-options');
+    const rows = Array.isArray(data) ? data : [];
+    setCategories(rows.filter((option) => option.type === 'category'));
+    setBrands(rows.filter((option) => option.type === 'brand'));
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [itemRes, whRes] = await Promise.all([
+      const [itemRes, whRes, optionRes] = await Promise.all([
         api.get('/inventory/items', {
           params: {
             search: search || undefined,
@@ -200,12 +273,14 @@ export default function Items() {
           },
         }),
         api.get('/inventory/warehouses').catch(() => ({ data: [] })),
+        api.get('/inventory/item-options').catch(() => ({ data: [] })),
       ]);
       const data = itemRes.data || [];
+      const options = Array.isArray(optionRes.data) ? optionRes.data : [];
       setItems(data);
       setWarehouses(whRes.data || []);
-      setCategories([...new Set(data.map((i) => i.category).filter(Boolean))]);
-      setBrands([...new Set(data.map((i) => i.brand).filter(Boolean))]);
+      setCategories(options.filter((option) => option.type === 'category'));
+      setBrands(options.filter((option) => option.type === 'brand'));
     } finally {
       setLoading(false);
     }
@@ -287,6 +362,40 @@ export default function Items() {
   };
 
   const f = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
+  const openOptionModal = (type) => {
+    setOptionModal(type);
+    setOptionName('');
+  };
+
+  const createOption = async () => {
+    const name = optionName.trim();
+    if (!name) return alert('Name is required');
+    setOptionSaving(true);
+    try {
+      const { data } = await api.post('/inventory/item-options', { type: optionModal, name });
+      await loadItemOptions();
+      f(optionModal, data.name);
+      setOptionName('');
+    } catch (e) {
+      alert(e.response?.data?.message || 'Error saving option');
+    } finally {
+      setOptionSaving(false);
+    }
+  };
+
+  const deleteOption = async (option) => {
+    if (!confirm(`Delete ${option.name}?`)) return;
+    setOptionSaving(true);
+    try {
+      await api.delete(`/inventory/item-options/${option._id}`);
+      if (form[option.type] === option.name) f(option.type, '');
+      await loadItemOptions();
+    } catch (e) {
+      alert(e.response?.data?.message || 'Error deleting option');
+    } finally {
+      setOptionSaving(false);
+    }
+  };
 
   const handleImageUpload = (event) => {
     const files = Array.from(event.target.files || []).slice(0, 5 - (form.images || []).length);
@@ -456,14 +565,24 @@ export default function Items() {
 
               {(itemSettings.showCategory || itemSettings.showBrand) && <div className="so-form-grid">
                 {itemSettings.showCategory && <div>
-                  <label className="so-label flex justify-between">Category <span className="text-[#0057ff]">+ New</span></label>
-                  <input className="so-input w-full" list="item-categories" value={form.category} onChange={(e) => f('category', e.target.value)} placeholder="Select Category" />
-                  <datalist id="item-categories">{categories.map((c) => <option key={c} value={c} />)}</datalist>
+                  <label className="so-label flex justify-between">
+                    <span>Category</span>
+                    <button type="button" onClick={() => openOptionModal('category')} className="text-[#0057ff]">+ New</button>
+                  </label>
+                  <select className="so-input so-select w-full" value={form.category} onChange={(e) => f('category', e.target.value)}>
+                    <option value="">Select Category</option>
+                    {categories.map((category) => <option key={category._id} value={category.name}>{category.name}</option>)}
+                  </select>
                 </div>}
                 {itemSettings.showBrand && <div>
-                  <label className="so-label flex justify-between">Brand <span className="text-[#0057ff]">+ New</span></label>
-                  <input className="so-input w-full" list="item-brands" value={form.brand} onChange={(e) => f('brand', e.target.value)} placeholder="Select Brand" />
-                  <datalist id="item-brands">{brands.map((b) => <option key={b} value={b} />)}</datalist>
+                  <label className="so-label flex justify-between">
+                    <span>Brand</span>
+                    <button type="button" onClick={() => openOptionModal('brand')} className="text-[#0057ff]">+ New</button>
+                  </label>
+                  <select className="so-input so-select w-full" value={form.brand} onChange={(e) => f('brand', e.target.value)}>
+                    <option value="">Select Brand</option>
+                    {brands.map((brand) => <option key={brand._id} value={brand.name}>{brand.name}</option>)}
+                  </select>
                 </div>}
               </div>}
 
@@ -551,6 +670,18 @@ export default function Items() {
           saving={settingsSaving}
           onClose={() => setSettingsOpen(false)}
           onSave={saveItemSettings}
+        />
+      )}
+      {optionModal && (
+        <ItemOptionModal
+          type={optionModal}
+          options={optionModal === 'category' ? categories : brands}
+          value={optionName}
+          saving={optionSaving}
+          onNameChange={setOptionName}
+          onCreate={createOption}
+          onDelete={deleteOption}
+          onClose={() => setOptionModal(null)}
         />
       )}
     </div>
