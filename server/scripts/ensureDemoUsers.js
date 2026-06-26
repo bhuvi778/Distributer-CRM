@@ -17,23 +17,6 @@ const demoUsers = [
     phone: '9876543000',
   },
   {
-    name: 'Admin User',
-    email: 'admin@saleson.com',
-    password: 'password123',
-    role: 'admin',
-    permissions: ['*'],
-    phone: '9876543210',
-    territory: 'North India',
-  },
-  {
-    name: 'Manufacturer User',
-    email: 'manufacturer@saleson.com',
-    password: 'password123',
-    role: 'manufacturer',
-    permissions: [],
-    phone: '9876543211',
-  },
-  {
     name: 'Distributor User',
     email: 'distributor@saleson.com',
     password: 'password123',
@@ -42,10 +25,10 @@ const demoUsers = [
     phone: '9876543214',
   },
   {
-    name: 'Sales Executive',
-    email: 'sales@saleson.com',
+    name: 'Sales Representative',
+    email: 'salesrep@saleson.com',
     password: 'password123',
-    role: 'sales_executive',
+    role: 'sales_rep',
     permissions: [],
     phone: '9876543212',
     territory: 'Delhi NCR',
@@ -54,31 +37,51 @@ const demoUsers = [
   },
 ];
 
+const oldDemoEmails = [
+  'admin@saleson.com',
+  'manufacturer@saleson.com',
+  'sales@saleson.com',
+  'priya@saleson.com',
+];
+
 const ensureDemoUsers = async () => {
   if (!process.env.MONGO_URI) {
     throw new Error('MONGO_URI is missing. Add it to server/.env before running this script.');
   }
 
   await mongoose.connect(process.env.MONGO_URI);
+  await User.deleteMany({ email: { $in: oldDemoEmails } });
+
+  const created = new Map();
 
   for (const account of demoUsers) {
     const user = await User.findOne({ email: account.email }).select('+password');
+    const payload = { ...account };
+    if (account.role === 'distributor') {
+      payload.createdBy = created.get('super_admin');
+    }
+    if (account.role === 'sales_rep') {
+      payload.createdBy = created.get('distributor');
+    }
 
     if (user) {
-      user.name = account.name;
-      user.password = account.password;
-      user.role = account.role;
-      user.permissions = account.permissions;
-      user.phone = account.phone;
-      user.territory = account.territory;
-      user.targetAmount = account.targetAmount || 0;
-      user.lastLocation = account.lastLocation;
+      user.name = payload.name;
+      user.password = payload.password;
+      user.role = payload.role;
+      user.permissions = payload.permissions;
+      user.phone = payload.phone;
+      user.territory = payload.territory;
+      user.targetAmount = payload.targetAmount || 0;
+      user.lastLocation = payload.lastLocation;
+      user.createdBy = payload.createdBy;
       user.isActive = true;
       user.useCustomAccess = false;
       await user.save();
       console.log(`Updated ${account.email}`);
+      created.set(account.role, user._id);
     } else {
-      await User.create(account);
+      const next = await User.create(payload);
+      created.set(account.role, next._id);
       console.log(`Created ${account.email}`);
     }
   }

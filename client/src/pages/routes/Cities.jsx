@@ -2,6 +2,21 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Edit2, Search, Trash2, X } from 'lucide-react';
 import api from '../../api/axios';
 
+const DEFAULT_CITY_NAMES = [
+  'New Delhi',
+  'Gurugram',
+  'Noida',
+  'Mumbai',
+  'Pune',
+  'Ahmedabad',
+  'Jaipur',
+  'Lucknow',
+  'Bengaluru',
+  'Hyderabad',
+  'Chennai',
+  'Kolkata',
+];
+
 function RouteDialog({ title, children, onClose, onSave, saving }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
@@ -58,7 +73,8 @@ function CityModal({ editing, regions, onClose, onSaved }) {
         </div>
         <div>
           <label className="so-label text-base">Name<span className="text-red-500">*</span></label>
-          <input className="so-input w-full" value={form.name} onChange={(event) => set('name', event.target.value)} placeholder="Name" autoFocus />
+          <input className="so-input w-full" list="city-options" value={form.name} onChange={(event) => set('name', event.target.value)} placeholder="Name" autoFocus />
+          <datalist id="city-options">{DEFAULT_CITY_NAMES.map((city) => <option key={city} value={city} />)}</datalist>
         </div>
       </div>
     </RouteDialog>
@@ -73,6 +89,7 @@ export default function Cities() {
   const [regionFilter, setRegionFilter] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState(null);
+  const [autoAdding, setAutoAdding] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -101,12 +118,30 @@ export default function Cities() {
     await api.delete(`/route-management/cities/${id}`);
     load();
   };
+  const autoAdd = async () => {
+    const region = regionFilter || regions[0]?._id;
+    if (!region) return alert('Create or select a region first');
+    setAutoAdding(true);
+    try {
+      const existing = new Set(cities.filter((city) => (city.region?._id || city.region) === region).map((city) => city.name?.toLowerCase()));
+      const missing = DEFAULT_CITY_NAMES.filter((city) => !existing.has(city.toLowerCase()));
+      await Promise.all(missing.map((name) => api.post('/route-management/cities', { region, name })));
+      load();
+    } catch (e) {
+      alert(e.response?.data?.message || 'Error auto adding cities');
+    } finally {
+      setAutoAdding(false);
+    }
+  };
 
   return (
     <div className="so-module-page">
       <div className="so-titlebar">
         <h1 className="so-title">Cities</h1>
-        <button type="button" onClick={openAdd} className="so-btn-primary text-sm">+ New</button>
+        <div className="so-actions">
+          <button type="button" onClick={autoAdd} disabled={autoAdding} className="so-btn-secondary text-sm">{autoAdding ? 'Adding...' : 'Auto Add'}</button>
+          <button type="button" onClick={openAdd} className="so-btn-primary text-sm">+ New</button>
+        </div>
       </div>
 
       <div className="so-filterbar">

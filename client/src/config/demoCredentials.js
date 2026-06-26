@@ -8,22 +8,6 @@ export const DEMO_CREDENTIALS = [
     permissions: ['*'],
   },
   {
-    role: 'Admin',
-    name: 'Admin User',
-    email: 'admin@saleson.com',
-    password: 'password123',
-    appRole: 'admin',
-    permissions: ['*'],
-  },
-  {
-    role: 'Manufacturer',
-    name: 'Manufacturer User',
-    email: 'manufacturer@saleson.com',
-    password: 'password123',
-    appRole: 'manufacturer',
-    permissions: [],
-  },
-  {
     role: 'Distributor',
     name: 'Distributor User',
     email: 'distributor@saleson.com',
@@ -32,11 +16,11 @@ export const DEMO_CREDENTIALS = [
     permissions: [],
   },
   {
-    role: 'Sales Executive',
-    name: 'Sales Executive',
-    email: 'sales@saleson.com',
+    role: 'Sales Representative',
+    name: 'Sales Representative',
+    email: 'salesrep@saleson.com',
     password: 'password123',
-    appRole: 'sales_executive',
+    appRole: 'sales_rep',
     permissions: [],
   },
 ];

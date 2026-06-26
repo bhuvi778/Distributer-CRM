@@ -122,7 +122,7 @@ export function canApprovePayments(role) {
 }
 
 export function canManageUsers(role) {
-  return role === 'admin';
+  return ['admin', 'distributor', 'manufacturer'].includes(role);
 }
 
 export function canDelete(role) {

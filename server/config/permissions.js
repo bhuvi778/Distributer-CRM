@@ -21,6 +21,9 @@ export const PERMISSION_MODULES = [
   { id: 'purchase-returns', path: '/app/purchases/returns', label: 'Purchase Returns', section: 'Operations' },
   { id: 'production', path: '/app/production', label: 'Production', section: 'Operations' },
   { id: 'reports', path: '/app/reports', label: 'Business Reports', section: 'Insights' },
+  { id: 'campaigns', path: '/app/campaigns', label: 'Campaigns', section: 'Retailer Growth' },
+  { id: 'feedback', path: '/app/feedback', label: 'Feedback', section: 'Retailer Growth' },
+  { id: 'add-customers', path: '/app/add-customers', label: 'Add Customers', section: 'Retailer Growth' },
   { id: 'support', path: '/app/support', label: 'Support', section: 'Insights' },
   { id: 'settings', path: '/app/settings', label: 'Settings', section: 'Insights' },
   { id: 'employees', path: '/app/employees', label: 'Employees', section: 'Admin', adminOnly: true },
@@ -51,7 +54,7 @@ export const ROLE_DEFAULT_MODULES = {
   sales_rep: ['dashboard', 'attendance', 'orders', 'invoices', 'payments', 'van-sales', 'targets', 'outlets', 'support', 'settings'],
   accountant: ['dashboard', 'invoices', 'payments', 'purchases', 'reports', 'support', 'settings'],
   reception: ['dashboard', 'outlets', 'support', 'settings'],
-  distributor: ['dashboard', 'orders', 'invoices', 'payments', 'outlets', 'products', 'inventory', 'reports', 'support', 'settings'],
+  distributor: ['dashboard', 'orders', 'invoices', 'payments', 'payment-in', 'payment-out', 'outlets', 'products', 'inventory', 'reports', 'campaigns', 'feedback', 'add-customers', 'support', 'settings', 'employees'],
   manufacturer: ['dashboard', 'products', 'inventory', 'purchases', 'production', 'orders', 'invoices', 'reports', 'support', 'settings'],
   employee: ['dashboard', 'support', 'settings'],
 };

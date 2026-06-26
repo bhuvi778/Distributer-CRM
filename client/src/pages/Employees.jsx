@@ -15,9 +15,13 @@ import {
 } from '../config/roles';
 
 // Roles visible in Add/Edit — not super_admin or admin (they have their own pages)
-const ALLOWED_ROLES = USER_ROLES.filter(
-  (r) => !['super_admin', 'admin'].includes(r.value),
-);
+const getAllowedRolesForUser = (user) => {
+  if (user?.role === 'super_admin') return USER_ROLES.filter((r) => r.value !== 'super_admin');
+  if (['distributor', 'manufacturer'].includes(user?.role)) {
+    return USER_ROLES.filter((r) => ['sales_executive', 'sales_rep', 'manager', 'accountant', 'reception', 'employee'].includes(r.value));
+  }
+  return USER_ROLES.filter((r) => !['super_admin', 'admin'].includes(r.value));
+};
 
 const emptyForm = () => ({
   name: '',
@@ -105,7 +109,8 @@ function UserSettingsModal({ customFields, setCustomFields, saving, onClose, onS
 export default function Employees() {
   const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
-  const isAdmin = ['admin', 'super_admin'].includes(user?.role);
+  const canManageUsers = ['admin', 'super_admin', 'distributor', 'manufacturer'].includes(user?.role);
+  const allowedRoles = useMemo(() => getAllowedRolesForUser(user), [user]);
 
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -220,11 +225,11 @@ export default function Employees() {
   };
 
   useEffect(() => {
-    if (searchParams.get('create') === '1' && isAdmin) {
+    if (searchParams.get('create') === '1' && canManageUsers) {
       openAdd();
       setSearchParams({}, { replace: true });
     }
-  }, [searchParams, setSearchParams, isAdmin]);
+  }, [searchParams, setSearchParams, canManageUsers]);
 
   const openEdit = (emp) => {
     setEditing(emp);
@@ -326,7 +331,7 @@ export default function Employees() {
       {/* Header */}
       <div className="so-titlebar">
         <h1 className="so-title">Users</h1>
-        {isAdmin && (
+        {canManageUsers && (
           <div className="so-actions">
             <button type="button" onClick={() => setSettingsOpen(true)} className="h-10 w-16 rounded-[3px] border border-[#6b7280] bg-white text-[#6b7280] inline-flex items-center justify-center shadow-[0_0_0_2px_rgba(15,23,42,0.12)]">
               <Settings size={20} />
@@ -366,7 +371,7 @@ export default function Employees() {
             <tr>
               <th className="w-[130px]">Id</th><th>User Name</th><th>Mobile</th><th>Email</th>
               <th>Role</th><th>Status</th>
-              {isAdmin && <th className="w-[80px]"></th>}
+              {canManageUsers && <th className="w-[80px]"></th>}
             </tr>
           </thead>
           <tbody>
@@ -399,7 +404,7 @@ export default function Employees() {
                     {emp.isActive !== false ? 'Active' : 'Inactive'}
                   </span>
                 </td>
-                {isAdmin && (
+                {canManageUsers && (
                   <td>
                     <button type="button" onClick={() => openEdit(emp)} className="so-icon-btn !w-10 !h-10" title="Edit"><Edit2 size={16} /></button>
                   </td>
@@ -456,7 +461,7 @@ export default function Employees() {
                   value={form.role}
                   onChange={(e) => applyRoleDefaults(e.target.value)}
                 >
-                  {ALLOWED_ROLES.map((r) => (
+                  {allowedRoles.map((r) => (
                     <option key={r.value} value={r.value}>{r.label}</option>
                   ))}
                 </select>

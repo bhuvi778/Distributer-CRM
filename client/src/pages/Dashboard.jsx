@@ -1,16 +1,23 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
+  CalendarCheck,
   CreditCard,
+  Download,
   IndianRupee,
   MapPin,
   Package,
+  RefreshCw,
+  Sparkles,
   ShoppingCart,
   Tag,
   Users,
 } from 'lucide-react';
 import api from '../api/axios';
 import useMasterData from '../hooks/useMasterData';
+import Modal from '../components/common/Modal';
+import { useAuth } from '../context/AuthContext';
+import { exportToExcel } from '../utils/exportExcel';
 
 const fmt = (date) => date.toISOString().slice(0, 10);
 const today = fmt(new Date());
@@ -82,11 +89,17 @@ function QuickStats({ stats }) {
 }
 
 export default function Dashboard() {
+  const { user } = useAuth();
   const { users } = useMasterData();
   const [stats, setStats] = useState(null);
   const [dateFrom, setDateFrom] = useState(today);
   const [dateTo, setDateTo] = useState(today);
   const [selectedUser, setSelectedUser] = useState('');
+  const [demoOpen, setDemoOpen] = useState(false);
+  const [refillState, setRefillState] = useState(() => ({
+    autoRefill: localStorage.getItem('autoRefill') === 'true',
+    credits: Number(localStorage.getItem('refillCredits') || 25),
+  }));
 
   const loadStats = useCallback(() => {
     api.get('/dashboard/stats', { params: { from: dateFrom, to: dateTo, user: selectedUser || undefined } })
@@ -100,6 +113,32 @@ export default function Dashboard() {
 
   const s = stats || {};
   const dateRange = `${formatDate(dateFrom)} - ${formatDate(dateTo)}`;
+  const showRetailerTools = ['retailer', 'distributor', 'super_admin'].includes(user?.role);
+  const exportDashboard = () => {
+    exportToExcel([
+      { metric: 'Orders', value: s.totalOrders || s.todayOrders || 0 },
+      { metric: 'Invoices', value: s.totalInvoices || 0 },
+      { metric: 'Payment In', value: s.pendingPayments || 0 },
+      { metric: 'Products', value: s.totalProducts || 0 },
+      { metric: 'Parties', value: s.totalOutlets || 0 },
+      { metric: 'Outstanding', value: s.outstandingBalance || 0 },
+    ], 'dashboard-summary', [
+      { key: 'metric', label: 'Metric' },
+      { key: 'value', label: 'Value' },
+    ]);
+  };
+  const toggleAutoRefill = () => {
+    const next = !refillState.autoRefill;
+    setRefillState((prev) => ({ ...prev, autoRefill: next }));
+    localStorage.setItem('autoRefill', String(next));
+  };
+  const addCredits = () => {
+    setRefillState((prev) => {
+      const credits = prev.credits + 25;
+      localStorage.setItem('refillCredits', String(credits));
+      return { ...prev, credits };
+    });
+  };
 
   return (
     <div className="min-h-[calc(100vh-52px)] bg-[#eef1f5] px-3 py-4">
@@ -115,7 +154,10 @@ export default function Dashboard() {
         `}
       </style>
 
-      <div className="mb-5 flex items-center justify-end gap-9">
+      <div className="mb-5 flex items-center justify-end gap-4">
+        <button type="button" onClick={exportDashboard} className="so-btn-secondary text-sm">
+          <Download size={15} /> Export
+        </button>
         <input
           className="h-10 w-[278px] border border-[#cfd6df] bg-white px-3 text-[17px] text-[#344054] outline-none"
           value={dateRange}
@@ -140,6 +182,39 @@ export default function Dashboard() {
           ))}
         </select>
       </div>
+
+      {showRetailerTools && (
+        <section className="mb-6 grid grid-cols-4 gap-5">
+          <div className="rounded-[12px] bg-white p-5 shadow-[0_10px_26px_rgba(15,23,42,0.08)]">
+            <div className="mb-3 flex items-center gap-2 text-[16px] font-semibold text-[#101828]">
+              <Sparkles size={18} className="text-[#174bb8]" /> Customer Life Cycle
+            </div>
+            <div className="grid grid-cols-4 gap-2 text-center text-xs font-semibold text-[#475467]">
+              {['Lead', 'First Buy', 'Repeat', 'Loyal'].map((step, index) => (
+                <div key={step} className={`rounded-[4px] px-2 py-3 ${index < 2 ? 'bg-[#dbeafe] text-[#174bb8]' : 'bg-[#f1f5f9]'}`}>{step}</div>
+              ))}
+            </div>
+          </div>
+          <button type="button" onClick={() => setDemoOpen(true)} className="rounded-[12px] bg-white p-5 text-left shadow-[0_10px_26px_rgba(15,23,42,0.08)] hover:shadow-[0_12px_30px_rgba(15,23,42,0.13)]">
+            <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-[6px] bg-[#174bb8] text-white"><CalendarCheck size={19} /></div>
+            <div className="text-[16px] font-semibold text-[#101828]">Book a Demo</div>
+            <div className="mt-1 text-sm text-[#667085]">Schedule walkthrough for campaigns and customer tools.</div>
+          </button>
+          <button type="button" onClick={toggleAutoRefill} className="rounded-[12px] bg-white p-5 text-left shadow-[0_10px_26px_rgba(15,23,42,0.08)]">
+            <div className="mb-2 flex items-center justify-between">
+              <RefreshCw size={22} className="text-[#0f766e]" />
+              <span className={`so-settings-switch ${refillState.autoRefill ? 'so-settings-switch-on' : ''}`} />
+            </div>
+            <div className="text-[16px] font-semibold text-[#101828]">Auto Refill</div>
+            <div className="mt-1 text-sm text-[#667085]">{refillState.autoRefill ? 'Enabled' : 'Disabled'}</div>
+          </button>
+          <button type="button" onClick={addCredits} className="rounded-[12px] bg-white p-5 text-left shadow-[0_10px_26px_rgba(15,23,42,0.08)]">
+            <div className="text-[16px] font-semibold text-[#101828]">Refill Credits</div>
+            <div className="mt-2 text-3xl font-semibold text-[#174bb8]">{refillState.credits}</div>
+            <div className="mt-1 text-sm text-[#667085]">Click to add 25 credits</div>
+          </button>
+        </section>
+      )}
 
       <div className="grid grid-cols-[1fr_380px] gap-10">
         <section>
@@ -186,6 +261,21 @@ export default function Dashboard() {
       {!stats && (
         <div className="mt-12 text-center text-sm text-slate-500">Loading dashboard...</div>
       )}
+
+      <Modal isOpen={demoOpen} onClose={() => setDemoOpen(false)} title="Book a Demo" size="md">
+        <div className="space-y-4">
+          <input className="so-input w-full" defaultValue={user?.name || ''} placeholder="Name" />
+          <input className="so-input w-full" defaultValue={user?.email || ''} placeholder="Email" />
+          <select className="so-input so-select w-full" defaultValue="Customer growth suite">
+            <option>Customer growth suite</option>
+            <option>Inventory and routes</option>
+            <option>Payments and reports</option>
+          </select>
+          <button type="button" onClick={() => { alert('Demo request saved'); setDemoOpen(false); }} className="so-btn-primary w-full justify-center">
+            Confirm Demo Request
+          </button>
+        </div>
+      </Modal>
     </div>
   );
 }

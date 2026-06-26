@@ -2,6 +2,19 @@ import { useEffect, useMemo, useState } from 'react';
 import { Edit2, Search, Trash2, X } from 'lucide-react';
 import api from '../../api/axios';
 
+const DEFAULT_REGIONS = [
+  'North India',
+  'South India',
+  'East India',
+  'West India',
+  'Central India',
+  'Delhi NCR',
+  'Maharashtra',
+  'Gujarat',
+  'Rajasthan',
+  'Uttar Pradesh',
+];
+
 function RouteDialog({ title, children, onClose, onSave, saving }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
@@ -45,7 +58,8 @@ function RegionModal({ editing, onClose, onSaved }) {
   return (
     <RouteDialog title={editing ? 'Edit Region' : 'Create Region'} onClose={onClose} onSave={save} saving={saving}>
       <label className="so-label text-base">Name<span className="text-red-500">*</span></label>
-      <input className="so-input w-full" value={name} onChange={(event) => setName(event.target.value)} placeholder="Name" autoFocus />
+      <input className="so-input w-full" list="region-options" value={name} onChange={(event) => setName(event.target.value)} placeholder="Name" autoFocus />
+      <datalist id="region-options">{DEFAULT_REGIONS.map((region) => <option key={region} value={region} />)}</datalist>
     </RouteDialog>
   );
 }
@@ -56,6 +70,7 @@ export default function Regions() {
   const [search, setSearch] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState(null);
+  const [autoAdding, setAutoAdding] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -80,12 +95,28 @@ export default function Regions() {
     await api.delete(`/route-management/regions/${id}`);
     load();
   };
+  const autoAdd = async () => {
+    setAutoAdding(true);
+    try {
+      const existing = new Set(regions.map((region) => region.name?.toLowerCase()));
+      const missing = DEFAULT_REGIONS.filter((region) => !existing.has(region.toLowerCase()));
+      await Promise.all(missing.map((name) => api.post('/route-management/regions', { name })));
+      load();
+    } catch (e) {
+      alert(e.response?.data?.message || 'Error auto adding regions');
+    } finally {
+      setAutoAdding(false);
+    }
+  };
 
   return (
     <div className="so-module-page">
       <div className="so-titlebar">
         <h1 className="so-title">Regions</h1>
-        <button type="button" onClick={openAdd} className="so-btn-primary text-sm">+ New</button>
+        <div className="so-actions">
+          <button type="button" onClick={autoAdd} disabled={autoAdding} className="so-btn-secondary text-sm">{autoAdding ? 'Adding...' : 'Auto Add'}</button>
+          <button type="button" onClick={openAdd} className="so-btn-primary text-sm">+ New</button>
+        </div>
       </div>
 
       <div className="so-filterbar">

@@ -49,6 +49,9 @@ export const PERMISSION_MODULES = [
   { id: 'payment-out', path: '/app/payments/out', label: 'Payment Out',        section: 'Finance' },
   { id: 'invoices',    path: '/app/invoices',    label: 'Invoices & GST',     section: 'Finance' },
   { id: 'reports',     path: '/app/reports',     label: 'Business Reports',   section: 'Finance' },
+  { id: 'campaigns',   path: '/app/campaigns',   label: 'Campaigns',          section: 'Retailer Growth' },
+  { id: 'feedback',    path: '/app/feedback',    label: 'Feedback',           section: 'Retailer Growth' },
+  { id: 'add-customers', path: '/app/add-customers', label: 'Add Customers',   section: 'Retailer Growth' },
 
   // Routes sub-modules
   { id: 'routes-regions', path: '/app/routes/regions', label: 'Regions', section: 'Routes' },
@@ -107,6 +110,9 @@ export const ROLE_META = {
   super_admin: { label: 'Super Admin Portal', description: 'Complete system control - manage all admins' },
   admin: { label: 'Admin Portal', description: 'Manage your team - sales executives & employees' },
   sales_executive: { label: 'Sales Executive Portal', description: 'Field operations - manage retailers, take orders' },
+  sales_rep: { label: 'Sales Representative Portal', description: 'Field operations - manage customers, orders and payments' },
+  distributor: { label: 'Distributor Portal', description: 'Manage company team, inventory, customers and campaigns' },
+  manufacturer: { label: 'Manufacturer Portal', description: 'Manage production, distributors and sales team' },
   retailer: { label: 'Retailer Portal', description: 'Place orders and track transactions' },
 };
 
@@ -156,7 +162,7 @@ export const ROLE_DEFAULT_MODULES = {
     'dashboard','inventory-items',
     'parties-customers','parties-visited','parties-groups',
     'sales-orders','sales-invoices','sales-credit-note',
-    'payments','reports','support','settings',
+    'payment-in','payment-out','reports','campaigns','feedback','add-customers','support','settings','employees',
   ],
   manufacturer: [
     'dashboard','inventory-items','inventory-warehouses',
@@ -166,7 +172,7 @@ export const ROLE_DEFAULT_MODULES = {
   ],
   reception:  ['dashboard','parties-customers','support','settings'],
   employee:   ['dashboard','support','settings'],
-  retailer:   ['dashboard','sales-orders','payments','support','settings'],
+  retailer:   ['dashboard','sales-orders','payment-in','campaigns','feedback','add-customers','support','settings'],
 };
 
 export const pathsFromModuleIds = (ids) =>
@@ -209,10 +215,10 @@ export const canNavPath = (user, path) => canAccessPath(user, path);
 const ACTION_ROLE_DEFAULTS = {
   approve_payments: ['super_admin', 'admin'],
   delete_records: ['super_admin', 'admin'],
-  company_settings: ['super_admin', 'admin'],
+  company_settings: ['super_admin', 'admin', 'distributor', 'manufacturer'],
   manage_targets: ['super_admin', 'admin'],
   manage_routes: ['super_admin', 'admin'],
-  manage_employees: ['super_admin', 'admin'],
+  manage_employees: ['super_admin', 'admin', 'distributor', 'manufacturer'],
   manage_admins: ['super_admin'],
   view_all_tracking: ['super_admin', 'admin', 'manager'],
   view_all_data: ['super_admin'],
@@ -243,6 +249,7 @@ export const canManageUser = (manager, targetUser) => {
   if (!manager || !targetUser) return false;
   if (manager.role === 'super_admin') return true;
   if (manager.role === 'admin' && targetUser.role !== 'super_admin') return true;
+  if (['distributor', 'manufacturer'].includes(manager.role) && ['sales_executive', 'sales_rep', 'manager', 'accountant', 'reception', 'employee'].includes(targetUser.role)) return true;
   if (manager.role === 'sales_executive' && targetUser.role === 'retailer') return true;
   return false;
 };

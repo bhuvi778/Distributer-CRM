@@ -2,7 +2,7 @@ import {
   LayoutDashboard, MapPin, Package, Users, Truck, ShoppingCart,
   ClipboardList, Globe, Clock, UserCog, Target, CreditCard, TrendingUp,
   FileText, RotateCcw, Warehouse, Tag, ArrowLeftRight, Building2,
-  Trophy, Wallet,
+  Trophy, Wallet, Megaphone, MessageSquare, UserPlus,
 } from 'lucide-react';
 
 /**
@@ -133,6 +133,17 @@ export const SALESON_NAV_DEF = [
       { path: '/app/production/bom',               moduleId: 'production', label: 'BOM' },
       { path: '/app/production/work-orders',       moduleId: 'production', label: 'Work Orders' },
       { path: '/app/production/production-orders', moduleId: 'production', label: 'Production Orders' },
+    ],
+  },
+  {
+    type: 'group',
+    id: 'retailer-growth',
+    label: 'Retailer Growth',
+    icon: Megaphone,
+    items: [
+      { path: '/app/campaigns', moduleId: 'campaigns', label: 'Campaigns' },
+      { path: '/app/feedback', moduleId: 'feedback', label: 'Feedback' },
+      { path: '/app/add-customers', moduleId: 'add-customers', label: 'Add Customers' },
     ],
   },
   {

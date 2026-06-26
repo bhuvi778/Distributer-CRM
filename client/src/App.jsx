@@ -27,6 +27,9 @@ import Leads from './pages/Leads';
 import Expenses from './pages/Expenses';
 import MyAccount from './pages/MyAccount';
 import Subscription from './pages/Subscription';
+import Campaigns from './pages/retailer/Campaigns';
+import Feedback from './pages/retailer/Feedback';
+import AddCustomers from './pages/retailer/AddCustomers';
 
 // ── Inventory ────────────────────────────────────────────────────
 import Items from './pages/inventory/Items';
@@ -156,6 +159,9 @@ function AppRoutes() {
         </Route>
         <Route path="invoices"  element={<RoleRoute path="/app/invoices"><P><Invoices /></P></RoleRoute>} />
         <Route path="reports"   element={<RoleRoute path="/app/reports"><P><Reports /></P></RoleRoute>} />
+        <Route path="campaigns" element={<RoleRoute path="/app/campaigns"><P><Campaigns /></P></RoleRoute>} />
+        <Route path="feedback" element={<RoleRoute path="/app/feedback"><P><Feedback /></P></RoleRoute>} />
+        <Route path="add-customers" element={<RoleRoute path="/app/add-customers"><P><AddCustomers /></P></RoleRoute>} />
 
         {/* ── ROUTES ── */}
         <Route path="routes">

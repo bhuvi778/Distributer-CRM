@@ -3,10 +3,10 @@ import { PERMISSION_ACTIONS } from '../config/permissions.js';
 const ACTION_ROLE_DEFAULTS = {
   approve_payments: ['admin', 'manager', 'accountant'],
   delete_records: ['admin', 'manager'],
-  company_settings: ['admin', 'manager'],
+  company_settings: ['admin', 'manager', 'distributor', 'manufacturer'],
   manage_targets: ['admin', 'manager'],
   manage_routes: ['admin', 'manager'],
-  manage_employees: ['admin'],
+  manage_employees: ['admin', 'distributor', 'manufacturer'],
   view_all_tracking: ['admin', 'manager'],
 };
 

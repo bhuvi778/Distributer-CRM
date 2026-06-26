@@ -10,6 +10,25 @@ import {
 } from '../config/permissions.js';
 
 const employeeSelect = '-password';
+const ORG_MANAGER_ROLES = ['distributor', 'manufacturer'];
+const ORG_CHILD_ROLES = ['sales_executive', 'sales_rep', 'manager', 'accountant', 'reception', 'employee'];
+
+const canManageEmployee = (manager, employee) => {
+  if (manager.role === 'super_admin') return employee.role !== 'super_admin';
+  if (manager.role === 'admin') return !['super_admin', 'admin'].includes(employee.role);
+  if (ORG_MANAGER_ROLES.includes(manager.role)) {
+    return ORG_CHILD_ROLES.includes(employee.role) && String(employee.createdBy || '') === String(manager._id);
+  }
+  return false;
+};
+
+const canCreateRole = (manager, role) => {
+  if (role === 'super_admin') return false;
+  if (manager.role === 'super_admin') return true;
+  if (manager.role === 'admin') return role !== 'admin';
+  if (ORG_MANAGER_ROLES.includes(manager.role)) return ORG_CHILD_ROLES.includes(role);
+  return false;
+};
 
 export const getPermissionConfig = (req, res) => {
   res.json({
@@ -27,6 +46,8 @@ export const listEmployees = async (req, res) => {
       filter = { role: { $nin: ['super_admin'] } };
     } else if (req.user.role === 'admin') {
       filter = { role: { $nin: ['super_admin', 'admin'] } };
+    } else if (ORG_MANAGER_ROLES.includes(req.user.role)) {
+      filter = { createdBy: req.user._id, role: { $in: ORG_CHILD_ROLES } };
     } else {
       filter = { role: { $nin: ['super_admin', 'admin'] }, _id: { $ne: req.user._id } };
     }
@@ -49,11 +70,8 @@ export const getEmployee = async (req, res) => {
     if (!employee) {
       return res.status(404).json({ message: 'Employee not found' });
     }
-    if (employee.role === 'super_admin') {
-      return res.status(403).json({ message: 'Cannot access super admin' });
-    }
-    if (employee.role === 'admin' && req.user.role !== 'super_admin') {
-      return res.status(403).json({ message: 'Not authorized to access admin' });
+    if (!canManageEmployee(req.user, employee) && !['manager'].includes(req.user.role)) {
+      return res.status(403).json({ message: 'Not authorized to access this user' });
     }
     res.json(employee);
   } catch (error) {
@@ -71,11 +89,9 @@ export const createEmployee = async (req, res) => {
     if (!name || !email || !password) {
       return res.status(400).json({ message: 'Name, email and password are required' });
     }
-    if (role === 'admin' && req.user.role !== 'super_admin') {
-      return res.status(403).json({ message: 'Only super admin can create admin accounts' });
-    }
-    if (role === 'super_admin') {
-      return res.status(400).json({ message: 'Cannot create super admin accounts' });
+    const requestedRole = role || 'employee';
+    if (!canCreateRole(req.user, requestedRole)) {
+      return res.status(403).json({ message: 'You cannot create this user role' });
     }
 
     const exists = await User.findOne({ email: email.toLowerCase() });
@@ -92,7 +108,7 @@ export const createEmployee = async (req, res) => {
       email,
       password,
       phone,
-      role: role || 'employee',
+      role: requestedRole,
       jobTitle,
       department,
       employeeId,
@@ -134,7 +150,7 @@ export const importEmployees = async (req, res) => {
           results.errors.push({ row: idx + 1, message: 'Name and email required' });
           continue;
         }
-        if (role === 'super_admin' || (role === 'admin' && req.user.role !== 'super_admin')) {
+        if (!canCreateRole(req.user, role)) {
           results.skipped += 1;
           results.errors.push({ row: idx + 1, message: 'Role not allowed' });
           continue;
@@ -183,11 +199,8 @@ export const updateEmployee = async (req, res) => {
     if (!employee) {
       return res.status(404).json({ message: 'Employee not found' });
     }
-    if (employee.role === 'super_admin') {
-      return res.status(403).json({ message: 'Cannot update super admin' });
-    }
-    if (employee.role === 'admin' && req.user.role !== 'super_admin') {
-      return res.status(403).json({ message: 'Not authorized to update admin' });
+    if (!canManageEmployee(req.user, employee)) {
+      return res.status(403).json({ message: 'Not authorized to update this user' });
     }
 
     const {
@@ -199,11 +212,8 @@ export const updateEmployee = async (req, res) => {
     if (email) employee.email = email.toLowerCase();
     if (phone !== undefined) employee.phone = phone;
     if (role) {
-      if (role === 'super_admin') {
-        return res.status(400).json({ message: 'Cannot set role to super admin' });
-      }
-      if (role === 'admin' && req.user.role !== 'super_admin') {
-        return res.status(403).json({ message: 'Only super admin can set admin role' });
+      if (!canCreateRole(req.user, role)) {
+        return res.status(403).json({ message: 'You cannot set this user role' });
       }
       employee.role = role;
     }
@@ -244,11 +254,8 @@ export const deleteEmployee = async (req, res) => {
     if (!employee) {
       return res.status(404).json({ message: 'Employee not found' });
     }
-    if (employee.role === 'super_admin') {
-      return res.status(403).json({ message: 'Cannot delete super admin' });
-    }
-    if (employee.role === 'admin' && req.user.role !== 'super_admin') {
-      return res.status(403).json({ message: 'Not authorized to delete admin' });
+    if (!canManageEmployee(req.user, employee)) {
+      return res.status(403).json({ message: 'Not authorized to delete this user' });
     }
     employee.isActive = false;
     await employee.save();

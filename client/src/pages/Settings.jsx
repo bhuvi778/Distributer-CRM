@@ -232,18 +232,35 @@ function SaveButton({ saved, onClick, disabled }) {
   );
 }
 
-function UploadBox({ label, disabled }) {
+function UploadBox({ label, disabled, value, onChange }) {
+  const handleFile = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => onChange(ev.target.result);
+    reader.readAsDataURL(file);
+    event.target.value = '';
+  };
+
   return (
     <div>
       <div className="mb-1.5 text-[15px] font-medium text-slate-900">{label}</div>
-      <button
-        type="button"
-        disabled={disabled}
-        className="flex h-[130px] w-[130px] flex-col items-center justify-center gap-4 border border-dashed border-slate-300 bg-white text-[18px] text-slate-900 disabled:cursor-not-allowed disabled:opacity-60"
-      >
-        <Plus size={15} />
-        <span>Upload</span>
-      </button>
+      <label className={`relative flex h-[130px] w-[130px] flex-col items-center justify-center gap-4 overflow-hidden border border-dashed border-slate-300 bg-white text-[18px] text-slate-900 ${disabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}>
+        {value ? (
+          <img src={value} alt={label} className="h-full w-full object-contain p-2" />
+        ) : (
+          <>
+            <Plus size={15} />
+            <span>Upload</span>
+          </>
+        )}
+        <input type="file" accept="image/*" disabled={disabled} className="hidden" onChange={handleFile} />
+      </label>
+      {value && !disabled && (
+        <button type="button" onClick={() => onChange('')} className="mt-2 text-xs font-medium text-red-600">
+          Remove
+        </button>
+      )}
     </div>
   );
 }
@@ -710,6 +727,7 @@ export default function SettingsPage() {
     },
   }));
   const handleSave = async () => {
+    if (!canEdit) return;
     const { data } = await api.put('/settings', settings);
     setSettings(mergeSettings(data || settings));
     setSaved(true);
@@ -831,8 +849,8 @@ export default function SettingsPage() {
 
               <AccordionSection title="Upload logo and signature">
                 <div className="grid grid-cols-2 gap-20">
-                  <UploadBox label="Upload logo" disabled={!canEdit} />
-                  <UploadBox label="Upload Signature" disabled={!canEdit} />
+                  <UploadBox label="Upload logo" value={settings.logo || ''} onChange={(value) => update('logo', value)} disabled={!canEdit} />
+                  <UploadBox label="Upload Signature" value={settings.signature || ''} onChange={(value) => update('signature', value)} disabled={!canEdit} />
                 </div>
               </AccordionSection>
 
@@ -886,7 +904,7 @@ export default function SettingsPage() {
                   <Field label="IFSC code">
                     <Input value={settings.bankDetails?.ifscCode || ''} onChange={(event) => nested('bankDetails', 'ifscCode', event.target.value)} disabled={!canEdit} />
                   </Field>
-                  <UploadBox label="Upload QR Code" disabled={!canEdit} />
+                  <UploadBox label="Upload QR Code" value={settings.qrCode || ''} onChange={(value) => update('qrCode', value)} disabled={!canEdit} />
                 </div>
               </AccordionSection>
             </div>
